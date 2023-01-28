@@ -1,12 +1,15 @@
 //
 // Created by Alexander G. Pronchenkov on 27.01.2023.
 //
+
 #include "game/Game.h"
 #include "game/KeyStateMachine.h"
+#include "game/SceneView.h"
 #include "palettes/Palettes.h"
 
 #include <GLFW/glfw3.h>
 #include <chrono>
+#include <cstdio>
 #include <iostream>
 #include <random>
 #include <span>
@@ -18,6 +21,8 @@ using ::u7::game::GameState;
 using ::u7::game::GenGameMap;
 using ::u7::game::KeyStateMachine;
 using ::u7::game::PlayerAction;
+using ::u7::game::SceneCoord;
+using ::u7::game::SceneView;
 using ::u7::maze::GenMazeOptions;
 using ::u7::palettes::Colour3f;
 using ::u7::palettes::GetColour;
@@ -32,7 +37,7 @@ constexpr GenMazeOptions kGenMazeOptions{
     // .pruneStubs = false,
 };
 
-constexpr int kGameCellSize = 32;
+constexpr int kScoreFontSize = 8;
 
 void DrawGameMap(const GameMap& map, std::span<const Colour3f> palette,
                  Colour3f exitColour) {
@@ -98,9 +103,6 @@ void DrawGamePlayer(const Game& game, Colour3f colour, float z) {
   }
 }
 
-int globalGameMapHeight;
-int globalGameMapWidth;
-
 std::shared_ptr<Game> globalGame1;
 std::shared_ptr<Game> globalGame2;
 
@@ -108,12 +110,19 @@ enum Palette { DEFAULT, CUBEHELIX, HEATMAP, LAST = HEATMAP };
 Palette globalPalette = Palette::DEFAULT;
 GLuint globalSceneDisplayLists;
 
+SceneView globalSceneView;
+
 void MakeNewMap() {
   static std::mt19937 rng;
+  const auto screenScale = globalSceneView.GetScreenScale();
+  const auto screenWidth = globalSceneView.GetScreenWidth();
+  const auto screenHeight = globalSceneView.GetScreenHeight();
+  const int width = std::max<int>(
+      (screenWidth - SceneView::kInnerScreenMargin) * screenScale, 3);
+  const int height = std::max<int>(
+      (screenHeight - SceneView::kInnerScreenMargin) * screenScale, 3);
   auto gameMap = GenGameMap(
-      globalGameMapWidth, globalGameMapHeight, [&] { return rng(); },
-      kGenMazeOptions);
-
+      width, height, [&] { return rng(); }, kGenMazeOptions);
   {
     static const auto defaultPalette = {
         Colour3f{147 / 255.0f, 147 / 255.0f, 147 / 255.0f}};
@@ -138,63 +147,14 @@ void MakeNewMap() {
   }
   globalGame1 = std::make_shared<Game>(gameMap);
   globalGame2 = std::make_shared<Game>(gameMap);
+  globalSceneView.SetSceneViewCentre(SceneCoord{
+      (gameMap->GetWidth() - 1) / 2.0, (gameMap->GetHeight() - 1) / 2.0});
+  globalSceneView.ProcessPointOfInterest(gameMap->GetEntranceLocation().x,
+                                         gameMap->GetEntranceLocation().y);
 }
 
-struct SceneLocation {
-  double x = 0;
-  double y = 0;
-};
-
-class SceneView {
- public:
-  void Reshape(double width, double height) {
-    width_ = width;
-    height_ = height;
-    Recalculate();
-  }
-  void UpdateCursor(SceneLocation loc) {
-    cursorX_ = loc.x;
-    cursorY_ = loc.y;
-    Recalculate();
-  }
-
-  double GetLeft() const { return x0_ * scale_; }
-  double GetRight() const { return (x0_ + width_) * scale_; }
-  double GetBottom() const { return y0_ * scale_; }
-  double GetTop() const { return (y0_ + height_) * scale_; };
-
-  SceneLocation ToSceneLocation(GameLocation loc) const {
-    return {loc.x / scale_, loc.y / scale_};
-  }
-
- private:
-  void Recalculate() {
-    constexpr double outerGap = 400;
-    const double innerWidth = std::max(0.0, width_ - outerGap);
-    const double innerHeight = std::max(0.0, height_ - outerGap);
-    const double innerLeft = x0_ + width_ / 2 - innerWidth / 2;
-    const double innerRight = x0_ + width_ / 2 + innerWidth / 2;
-    const double innerBottom = y0_ + height_ / 2 - innerHeight / 2;
-    const double innerTop = y0_ + height_ / 2 + innerHeight / 2;
-    const double cx = std::clamp(cursorX_, innerLeft, innerRight);
-    const double cy = std::clamp(cursorY_, innerBottom, innerTop);
-    x0_ -= cx - cursorX_;
-    y0_ -= cy - cursorY_;
-  }
-
-  double scale_ = 1.0 / kGameCellSize;
-  double x0_ = 0;
-  double y0_ = 0;
-  double width_ = 320.0;
-  double height_ = 200.0;
-  double cursorX_ = 0.0;
-  double cursorY_ = 0.0;
-};
-
-SceneView globalSceneView;
-
 void FramebufferSizeCallback(GLFWwindow* /*window*/, int width, int height) {
-  globalSceneView.Reshape(width, height);
+  globalSceneView.ReshapeScreen(width, height);
   glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 }
 
@@ -232,10 +192,6 @@ void KeyCallback(GLFWwindow* window, int key, int /*scancode*/, int action,
 
     case GLFW_KEY_R:
       MakeNewMap();
-      globalSceneView.UpdateCursor(
-          globalSceneView.ToSceneLocation(globalGame1->GetPlayerLocation()));
-      globalSceneView.UpdateCursor(
-          globalSceneView.ToSceneLocation(globalGame2->GetPlayerLocation()));
       return;
 
     default:
@@ -266,14 +222,14 @@ void KeyH(GLFWwindow* window) {
     } else if (r) {
       game->PerformPlayerAction(PlayerAction::GO_RIGHT);
     }
-    globalSceneView.UpdateCursor(
-        globalSceneView.ToSceneLocation(game->GetPlayerLocation()));
+    globalSceneView.ProcessPointOfInterest(game->GetPlayerLocation().x,
+                                           game->GetPlayerLocation().y);
   };
   auto game1 = globalGame1;
   auto game2 = globalGame2;
   UpdateKeysetStateMachines(window);
-  playerAction(globalKeyState1.Read(), game1.get());
   playerAction(globalKeyState2.Read(), game2.get());
+  playerAction(globalKeyState1.Read(), game1.get());
   const auto lshift = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
   const auto rshift = (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
   if (lshift && !rshift) {
@@ -288,14 +244,15 @@ void KeyH(GLFWwindow* window) {
 void Draw() {
   const auto game1 = globalGame1;
   const auto game2 = globalGame2;
+  const auto bottomLeft = globalSceneView.GetBottomLeft();
+  const auto topRight = globalSceneView.GetTopRight();
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glShadeModel(GL_FLAT);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  glOrtho(globalSceneView.GetLeft(), globalSceneView.GetRight(),
-          globalSceneView.GetBottom(), globalSceneView.GetTop(), -5.0, 5.0);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+  glOrtho(bottomLeft.x, topRight.x, bottomLeft.y, topRight.y, -5.0, 5.0);
   glCallList(globalSceneDisplayLists + globalPalette);
   DrawGamePlayer(*game1, Colour3f{0.94f, 0.72f, 0.82f}, 3.0f);
   DrawGamePlayer(*game2, Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
@@ -331,13 +288,9 @@ int SubMain() {
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     FramebufferSizeCallback(window, width, height);
-    globalGameMapWidth = std::max((width - 400) / kGameCellSize, 3);
-    globalGameMapHeight = std::max((height - 400) / kGameCellSize, 3);
   }
 
   MakeNewMap();
-  globalSceneView.UpdateCursor(
-      globalSceneView.ToSceneLocation(globalGame1->GetPlayerLocation()));
 
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
@@ -351,8 +304,6 @@ int SubMain() {
            (game1->GetGameState() == GameState::COMPLETE ||
             game2->GetGameState() == GameState::COMPLETE))) {
         MakeNewMap();
-        globalSceneView.UpdateCursor(
-            globalSceneView.ToSceneLocation(globalGame1->GetPlayerLocation()));
       }
     }
     Draw();
