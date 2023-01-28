@@ -14,6 +14,6 @@ add_dependencies(maze algorithm)
 
 add_library(palettes palettes/Palettes.h palettes/Palettes.cpp)
 
-add_executable(mazegl game/main.cpp game/Game.cpp game/Game.h game/KeyStateMachine.h)
+add_executable(mazegl game/main.cpp game/Game.cpp game/Game.h game/KeyStateMachine.h game/Glyph.h game/Glyph.cpp)
 add_dependencies(mazegl maze algorithm palettes)
 target_link_libraries(mazegl glfw OpenGL::GL maze algorithm palettes)

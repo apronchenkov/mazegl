@@ -4,7 +4,6 @@
 #ifndef U7_GAME_GAME_H
 #define U7_GAME_GAME_H
 
-#pragma once
 #include "algorithm/Matrix.h"
 #include "maze/Maze.h"
 

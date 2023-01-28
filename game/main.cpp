@@ -320,7 +320,6 @@ int SubMain() {
   glfwSetKeyCallback(window, KeyCallback);
 
   glfwMakeContextCurrent(window);
-  //  gladLoadGL(glfwGetProcAddress);
   glfwSwapInterval(1);
 
   glEnable(GL_DEPTH_TEST);
