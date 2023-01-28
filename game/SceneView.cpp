@@ -5,6 +5,14 @@
 
 namespace u7::game {
 
+void SceneView::ZoomIn() {
+  screenScale_ = std::max(1 / 256.0, screenScale_ * 8 / 9);
+}
+
+void SceneView::ZoomOut() {
+  screenScale_ = std::min(1 / 8.0, screenScale_ * 9 / 8);
+}
+
 void SceneView::ProcessPointOfInterest(SceneCoord coord) {
   const int innerScreenWidth = std::max(0, screenWidth_ - kInnerScreenMargin);
   const int innerScreenHeight = std::max(0, screenHeight_ - kInnerScreenMargin);

@@ -17,7 +17,7 @@ struct SceneCoord {
 
 class SceneView {
  public:
-  enum { kInnerScreenMargin = 200 };
+  enum { kInnerScreenMargin = 256 };
   void ReshapeScreen(int screenWidth, int screenHeight) {
     screenWidth_ = screenWidth;
     screenHeight_ = screenHeight;
@@ -38,6 +38,10 @@ class SceneView {
     return {sceneViewCentre_.x + screenWidth_ * screenScale_ / 2,
             sceneViewCentre_.y + screenHeight_ * screenScale_ / 2};
   }
+
+  void ZoomIn();
+
+  void ZoomOut();
 
   void SetSceneViewCentre(SceneCoord coord) { sceneViewCentre_ = coord; }
 

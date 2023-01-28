@@ -204,6 +204,8 @@ void KeyCallback(GLFWwindow* window, int key, int /*scancode*/, int action,
   if (action != GLFW_PRESS && action != GLFW_REPEAT) {
     return;
   }
+  const auto player1Loc = globalGame1->GetPlayerLocation();
+  const auto player2Loc = globalGame2->GetPlayerLocation();
   switch (key) {
     case GLFW_KEY_ESCAPE:
       glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -211,6 +213,16 @@ void KeyCallback(GLFWwindow* window, int key, int /*scancode*/, int action,
 
     case GLFW_KEY_R:
       MakeNewMap();
+      return;
+
+    case GLFW_KEY_MINUS:
+      globalSceneView.ZoomOut();
+      return;
+
+    case GLFW_KEY_EQUAL:
+      globalSceneView.ZoomIn();
+      globalSceneView.ProcessPointOfInterest(player2Loc.x, player2Loc.y);
+      globalSceneView.ProcessPointOfInterest(player1Loc.x, player1Loc.y);
       return;
 
     default:
