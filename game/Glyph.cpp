@@ -14,8 +14,8 @@ Glyph GetStandardGlyph(std::string_view glyphName) {
       Pxl{3, 2}, Pxl{3, 1}, Pxl{2, 0}, Pxl{1, 0},
   };
   static constexpr std::array digit1Pxls = {
-      Pxl{1, 4}, Pxl{2, 5}, Pxl{3, 6}, Pxl{3, 5}, Pxl{3, 4},
-      Pxl{3, 3}, Pxl{3, 2}, Pxl{3, 1}, Pxl{3, 0},
+      Pxl{0, 4}, Pxl{1, 5}, Pxl{2, 6}, Pxl{2, 5}, Pxl{2, 4},
+      Pxl{2, 3}, Pxl{2, 2}, Pxl{2, 1}, Pxl{2, 0},
   };
   static constexpr std::array digit2Pxls = {
       Pxl{0, 5}, Pxl{1, 6}, Pxl{2, 6}, Pxl{3, 5}, Pxl{3, 4},
@@ -54,11 +54,14 @@ Glyph GetStandardGlyph(std::string_view glyphName) {
       Pxl{2, 6}, Pxl{3, 5}, Pxl{3, 4}, Pxl{3, 3}, Pxl{3, 2},
       Pxl{3, 1}, Pxl{2, 0}, Pxl{1, 0}, Pxl{0, 1},
   };
+  if (glyphName == " ") {
+    return Glyph{.base = {0, 0}, .dimension = {5, 8}, .pxls = {}};
+  }
   if (glyphName == "0") {
     return Glyph{.base = {0, 0}, .dimension = {5, 8}, .pxls = digit0Pxls};
   }
   if (glyphName == "1") {
-    return Glyph{.base = {0, 0}, .dimension = {5, 8}, .pxls = digit1Pxls};
+    return Glyph{.base = {0, 0}, .dimension = {4, 8}, .pxls = digit1Pxls};
   }
   if (glyphName == "2") {
     return Glyph{.base = {0, 0}, .dimension = {5, 8}, .pxls = digit2Pxls};

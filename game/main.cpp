@@ -3,6 +3,7 @@
 //
 
 #include "game/Game.h"
+#include "game/Glyph.h"
 #include "game/KeyStateMachine.h"
 #include "game/SceneView.h"
 #include "palettes/Palettes.h"
@@ -19,6 +20,8 @@ using ::u7::game::GameLocation;
 using ::u7::game::GameMap;
 using ::u7::game::GameState;
 using ::u7::game::GenGameMap;
+using ::u7::game::GetStandardGlyph;
+using ::u7::game::Glyph;
 using ::u7::game::KeyStateMachine;
 using ::u7::game::PlayerAction;
 using ::u7::game::SceneCoord;
@@ -103,6 +106,22 @@ void DrawGamePlayer(const Game& game, Colour3f colour, float z) {
   }
 }
 
+void Print(std::string_view message) {
+  for (char ch : message) {
+    glBegin(GL_QUADS);
+    const auto& glyph = GetStandardGlyph(std::string_view(&ch, 1));
+    for (const auto& [x, y] : glyph.pxls) {
+      glVertex3i(x, y, 0);
+      glVertex3i(x + 1, y, 0);
+      glVertex3i(x + 1, y + 1, 0);
+      glVertex3i(x, y + 1, 0);
+    }
+    glEnd();
+    glTranslatef(glyph.dimension.x - glyph.base.x, 0.0f, 0.0f);
+  }
+}
+
+int globalGameScore;
 std::shared_ptr<Game> globalGame1;
 std::shared_ptr<Game> globalGame2;
 
@@ -256,6 +275,21 @@ void Draw() {
   glCallList(globalSceneDisplayLists + globalPalette);
   DrawGamePlayer(*game1, Colour3f{0.94f, 0.72f, 0.82f}, 3.0f);
   DrawGamePlayer(*game2, Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
+  {
+    const auto sp = GetStandardGlyph(" ");
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glOrtho(0.0, globalSceneView.GetScreenWidth(), 0.0,
+            globalSceneView.GetScreenHeight(), -5.0, 5.0);
+    glTranslatef(0, globalSceneView.GetScreenHeight(), 0.0);
+    glTranslatef(30.0, -30.0, 4.0);
+    glScalef(kScoreFontSize, kScoreFontSize, 1.0f);
+    glTranslatef(sp.dimension.x - sp.base.x, -sp.dimension.y + sp.base.y, 0.0);
+    glColor3f(255 / 255.0f, 235 / 255.0f, 185 / 255.0f);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%04d", 10 * globalGameScore);
+    Print(buf);
+  }
 }
 
 int SubMain() {
@@ -303,6 +337,7 @@ int SubMain() {
           (game1->GetPlayerLocation() == game2->GetPlayerLocation() &&
            (game1->GetGameState() == GameState::COMPLETE ||
             game2->GetGameState() == GameState::COMPLETE))) {
+        globalGameScore += 1;
         MakeNewMap();
       }
     }
