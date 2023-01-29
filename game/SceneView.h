@@ -1,7 +1,6 @@
 //
 // Created by Alexander G. Pronchenkov on 28.01.2023.
 //
-
 #ifndef U7_GAME_SCENE_VIEW_H_
 #define U7_GAME_SCENE_VIEW_H_
 

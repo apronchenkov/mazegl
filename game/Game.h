@@ -1,8 +1,8 @@
 //
 // Created by Alexander G. Pronchenkov on 27.01.2023.
 //
-#ifndef U7_GAME_GAME_H
-#define U7_GAME_GAME_H
+#ifndef U7_GAME_GAME_H_
+#define U7_GAME_GAME_H_
 
 #include "algorithm/Matrix.h"
 #include "maze/Maze.h"
@@ -88,7 +88,7 @@ enum class PlayerAction {
 
 class Game {
  public:
-  explicit Game(std::shared_ptr<GameMap> map);
+  explicit Game(std::shared_ptr<const GameMap> map);
 
   const GameMap& GetGameMap() const { return *map_; }
 
@@ -99,11 +99,11 @@ class Game {
   void PerformPlayerAction(PlayerAction action);
 
  private:
-  std::shared_ptr<GameMap> map_;
+  std::shared_ptr<const GameMap> map_;
   GameLocation playerLocation_;
   GameState gameState_ = GameState::IN_PROGRESS;
 };
 
 }  // namespace u7::game
 
-#endif  // U7_GAME_GAME_H
+#endif  // U7_GAME_GAME_H_

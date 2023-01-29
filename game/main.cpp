@@ -1,7 +1,6 @@
 //
 // Created by Alexander G. Pronchenkov on 27.01.2023.
 //
-
 #include "game/Game.h"
 #include "game/Glyph.h"
 #include "game/KeyStateMachine.h"

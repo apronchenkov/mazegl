@@ -1,8 +1,8 @@
 //
 // Created by Alexander G. Pronchenkov on 27.01.2023.
 //
-#ifndef U7_GAME_KEYSTATEMACHINE_H
-#define U7_GAME_KEYSTATEMACHINE_H
+#ifndef U7_GAME_KEYSTATEMACHINE_H_
+#define U7_GAME_KEYSTATEMACHINE_H_
 
 #include <bitset>
 #include <chrono>
@@ -32,14 +32,16 @@ class KeyStateMachine {
   Keyset Read() { return std::exchange(keyset_, Keyset{}); }
 
  private:
-  static constexpr std::chrono::steady_clock::duration kDelayBeforeFirstRepeat = std::chrono::milliseconds(300);
-  static constexpr std::chrono::steady_clock::duration kDelayBetweenRepeats = std::chrono::milliseconds(60);
+  static constexpr std::chrono::steady_clock::duration kDelayBeforeFirstRepeat =
+      std::chrono::milliseconds(300);
+  static constexpr std::chrono::steady_clock::duration kDelayBetweenRepeats =
+      std::chrono::milliseconds(60);
 
   std::chrono::steady_clock::time_point nextTimestamp_;
   Keyset keyset_;
   Keyset internalKeyset_;
 };
 
-}  // namespace u7::experiment::mazegl
+}  // namespace u7::game
 
-#endif  // U7_KEYSTATEMACHINE_H
+#endif  // U7_KEYSTATEMACHINE_H_

@@ -4,6 +4,7 @@
 #include "game/Game.h"
 
 #include <cassert>
+#include <stdexcept>
 #include <vector>
 
 namespace u7::game {
@@ -76,7 +77,7 @@ std::shared_ptr<GameMap> GenGameMap(int width, int height, maze::Rng rng,
   return std::make_shared<GameMap>(std::move(maze), entrance, exit);
 }
 
-Game::Game(std::shared_ptr<GameMap> map)
+Game::Game(std::shared_ptr<const GameMap> map)
     : map_(std::move(map)),
       playerLocation_(map_->GetEntranceLocation()),
       gameState_(map_->GetEntranceLocation() == map_->GetExitLocation()

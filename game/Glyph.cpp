@@ -1,8 +1,9 @@
 //
 // Created by Alexander G. Pronchenkov on 28.01.2023.
 //
-
 #include "game/Glyph.h"
+
+#include <array>
 
 namespace u7::game {
 
