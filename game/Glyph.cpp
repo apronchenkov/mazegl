@@ -4,6 +4,7 @@
 #include "game/Glyph.h"
 
 #include <array>
+#include <string_view>
 
 namespace u7::game {
 

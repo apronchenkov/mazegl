@@ -3,7 +3,6 @@
 //
 #include "game/Game.h"
 
-#include <cassert>
 #include <stdexcept>
 #include <vector>
 

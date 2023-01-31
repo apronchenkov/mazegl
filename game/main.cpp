@@ -7,6 +7,7 @@
 #include "game/SceneView.h"
 #include "palettes/Palettes.h"
 
+#define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <cstdio>
@@ -300,6 +301,72 @@ void Draw() {
     char buf[32];
     snprintf(buf, sizeof(buf), "%04d", 10 * globalGameScore);
     Print(buf);
+  }
+
+  static const auto heatmapPalette = GetHeatmap5Palette();
+  GLFWgamepadstate gamepadState;
+  if (glfwGetGamepadState(GLFW_JOYSTICK_1, &gamepadState)) {
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glOrtho(0.0, globalSceneView.GetScreenWidth(), 0.0,
+            globalSceneView.GetScreenHeight(), -5.0, 5.0);
+    glTranslatef(160, globalSceneView.GetScreenHeight() - 210, 0.0);
+    glColor3f(0.8f, 0.8f, 0.8f);
+    glBegin(GL_LINE_LOOP);
+    const float r = 100;
+    for (int i = 0; i < 32; ++i) {
+      float phi = 2 * 3.1415926535897 * i / 32;
+      float x = r * std::cos(phi);
+      float y = r * std::sin(phi);
+      glVertex2f(x, y);
+    }
+    glEnd();
+    glBegin(GL_LINES);
+    {
+      const auto colour = GetColour(1.0f / 4.0f, heatmapPalette);
+      glColor3f(colour.r, colour.g, colour.b);
+      float x = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
+      float y = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
+      float l = hypot(x, y);
+      if (l > 0.33) {
+        x /= l;
+        y /= l;
+      }
+      glVertex2f(0.0f, 0.0f);
+      glVertex2f(r * x, -r * y);
+    }
+    {
+      const auto colour = GetColour(2.0f / 4.0f, heatmapPalette);
+      glColor3f(colour.r, colour.g, colour.b);
+      const float x = gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
+      const float y = gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
+      glVertex2f(0.0f, 0.0f);
+      glVertex2f(r * x, -r * y);
+    }
+    int hatsCount = 0;
+    const unsigned char* hats =
+        glfwGetJoystickHats(GLFW_JOYSTICK_1, &hatsCount);
+    if (hatsCount > 0) {
+      const auto colour = GetColour(3.0f / 4.0f, heatmapPalette);
+      glColor3f(colour.r, colour.g, colour.b);
+      float x = 0, y = 0;
+      if (hats[0] & GLFW_HAT_UP) {
+        y += r;
+      }
+      if (hats[0] & GLFW_HAT_DOWN) {
+        y -= r;
+      }
+      if (hats[0] & GLFW_HAT_RIGHT) {
+        x += r;
+      }
+      if (hats[0] & GLFW_HAT_LEFT) {
+        x -= r;
+      }
+      float l = hypot(x, y);
+      glVertex2f(0.0f, 0.0f);
+      glVertex2f(r * x / l, r * y / l);
+    }
+    glEnd();
   }
 }
 
