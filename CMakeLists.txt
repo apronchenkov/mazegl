@@ -23,14 +23,17 @@ add_dependencies(maze
         algorithm)
 
 add_executable(mazegl
-        game/main.cpp
-        game/Game.h
         game/Game.cpp
-        game/KeyStateMachine.h
-        game/Glyph.h
+        game/Game.h
+        game/GameMap.cpp
+        game/GameMap.h
         game/Glyph.cpp
+        game/Glyph.h
+        game/KeyStateMachine.h
+        game/SceneView.cpp
         game/SceneView.h
-        game/SceneView.cpp)
+        game/main.cpp)
+
 add_dependencies(mazegl
         maze
         algorithm

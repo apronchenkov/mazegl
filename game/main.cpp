@@ -16,7 +16,6 @@
 #include <span>
 
 using ::u7::game::Game;
-using ::u7::game::GameLocation;
 using ::u7::game::GameMap;
 using ::u7::game::GameState;
 using ::u7::game::GenGameMap;
@@ -45,14 +44,14 @@ constexpr int kScoreFontSize = 8;
 void DrawGameMap(const GameMap& map, std::span<const Colour3f> palette,
                  Colour3f exitColour) {
   glBegin(GL_LINES);
-  const auto colour = [&](GameLocation loc) {
+  const auto colour = [&](GameMap::Location loc) {
     return GetColour(1.0f - (0.0625f + map.GetDistanceToExit(loc)) /
                                 (0.0625f + map.MaxDistanceToExit()),
                      palette);
   };
   for (int x = 0; x < map.GetWidth(); ++x) {
     for (int y = 0; y < map.GetHeight(); ++y) {
-      const GameLocation loc{x, y};
+      const GameMap::Location loc{x, y};
       if (map.IsHall(loc)) {
         const auto locColour = colour(loc);
         for (auto newLoc : {loc.Right(), loc.Up()}) {
