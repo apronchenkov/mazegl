@@ -3,7 +3,6 @@
 //
 #include "game/Game.h"
 #include "game/Glyph.h"
-#include "game/KeyStateMachine.h"
 #include "game/SceneView.h"
 #include "palettes/Palettes.h"
 
@@ -17,12 +16,9 @@
 
 using ::u7::game::Game;
 using ::u7::game::GameMap;
-using ::u7::game::GameState;
 using ::u7::game::GenGameMap;
 using ::u7::game::GetStandardGlyph;
 using ::u7::game::Glyph;
-using ::u7::game::KeyStateMachine;
-using ::u7::game::PlayerAction;
 using ::u7::game::SceneCoord;
 using ::u7::game::SceneView;
 using ::u7::maze::GenMazeOptions;
@@ -86,8 +82,9 @@ void DrawGameMap(const GameMap& map, std::span<const Colour3f> palette,
   }
 }
 
-void DrawGamePlayer(const Game& game, Colour3f colour, float z) {
-  const auto loc = game.GetPlayerLocation();
+void DrawGamePlayer(const Game::PlayerState& playerState, Colour3f colour,
+                    float z) {
+  const auto& loc = playerState.location;
   glColor3f(colour.r, colour.g, colour.b);
   glBegin(GL_QUADS);
   glVertex3f(loc.x - 0.5f, loc.y - 0.5f, z);
@@ -95,7 +92,7 @@ void DrawGamePlayer(const Game& game, Colour3f colour, float z) {
   glVertex3f(loc.x + 0.5f, loc.y + 0.5f, z);
   glVertex3f(loc.x - 0.5f, loc.y + 0.5f, z);
   glEnd();
-  if (game.GetGameState() == GameState::COMPLETE) {
+  if (playerState.touchedExit) {
     glBegin(GL_LINE_LOOP);
     glVertex3f(loc.x - 0.7f, loc.y - 0.7f, z);
     glVertex3f(loc.x + 0.7f, loc.y - 0.7f, z);
@@ -123,6 +120,7 @@ void Print(std::string_view message) {
 int globalGameScore;
 std::shared_ptr<Game> globalGame1;
 std::shared_ptr<Game> globalGame2;
+std::chrono::steady_clock::time_point globalLastGameActionTimePoint;
 
 enum Palette { DEFAULT, CUBEHELIX, HEATMAP, LAST = HEATMAP };
 Palette globalPalette = Palette::DEFAULT;
@@ -169,6 +167,7 @@ void MakeNewMap() {
       (gameMap->GetWidth() - 1) / 2.0, (gameMap->GetHeight() - 1) / 2.0});
   globalSceneView.ProcessPointOfInterest(gameMap->GetEntranceLocation().x,
                                          gameMap->GetEntranceLocation().y);
+  globalLastGameActionTimePoint = std::chrono::steady_clock::now();
 }
 
 void FramebufferSizeCallback(GLFWwindow* /*window*/, int width, int height) {
@@ -176,35 +175,13 @@ void FramebufferSizeCallback(GLFWwindow* /*window*/, int width, int height) {
   glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 }
 
-KeyStateMachine globalKeyState1;
-KeyStateMachine globalKeyState2;
-
-void UpdateKeysetStateMachines(GLFWwindow* window) {
-  const auto impl = [&](std::chrono::steady_clock::time_point now, int keyUp,
-                        int keyDown, int keyLeft, int keyRight,
-                        KeyStateMachine* keyState) {
-    KeyStateMachine::Keyset keys;
-    keys.set(KeyStateMachine::UP, glfwGetKey(window, keyUp) == GLFW_PRESS);
-    keys.set(KeyStateMachine::DOWN, glfwGetKey(window, keyDown) == GLFW_PRESS);
-    keys.set(KeyStateMachine::LEFT, glfwGetKey(window, keyLeft) == GLFW_PRESS);
-    keys.set(KeyStateMachine::RIGHT,
-             glfwGetKey(window, keyRight) == GLFW_PRESS);
-    keyState->Update(now, keys);
-  };
-  const auto now = std::chrono::steady_clock::now();
-  impl(now, GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D, &globalKeyState1);
-  impl(now, GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_LEFT, GLFW_KEY_RIGHT,
-       &globalKeyState2);
-}
-
 void KeyCallback(GLFWwindow* window, int key, int /*scancode*/, int action,
                  int /*mods*/) {
-  UpdateKeysetStateMachines(window);
   if (action != GLFW_PRESS && action != GLFW_REPEAT) {
     return;
   }
-  const auto player1Loc = globalGame1->GetPlayerLocation();
-  const auto player2Loc = globalGame2->GetPlayerLocation();
+  const auto player1Loc = globalGame1->GetPlayerState().location;
+  const auto player2Loc = globalGame2->GetPlayerState().location;
   switch (key) {
     case GLFW_KEY_ESCAPE:
       glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -230,36 +207,36 @@ void KeyCallback(GLFWwindow* window, int key, int /*scancode*/, int action,
 }
 
 void KeyH(GLFWwindow* window) {
-  const auto playerAction = [&](KeyStateMachine::Keyset keyset, Game* game) {
-    const auto loc = game->GetPlayerLocation();
-    const auto& map = game->GetGameMap();
-    const bool u = (keyset.test(KeyStateMachine::UP) && map.IsHall(loc.Up()));
-    const bool d =
-        (keyset.test(KeyStateMachine::DOWN) && map.IsHall(loc.Down()));
-    const bool l =
-        (keyset.test(KeyStateMachine::LEFT) && map.IsHall(loc.Left()));
-    const bool r =
-        (keyset.test(KeyStateMachine::RIGHT) && map.IsHall(loc.Right()));
-    if (u + d + l + r != 1) {
-      return;
-    }
-    if (u) {
-      game->PerformPlayerAction(PlayerAction::GO_UP);
-    } else if (d) {
-      game->PerformPlayerAction(PlayerAction::GO_DOWN);
-    } else if (l) {
-      game->PerformPlayerAction(PlayerAction::GO_LEFT);
-    } else if (r) {
-      game->PerformPlayerAction(PlayerAction::GO_RIGHT);
-    }
-    globalSceneView.ProcessPointOfInterest(game->GetPlayerLocation().x,
-                                           game->GetPlayerLocation().y);
+  const auto readPlayerActions = [&](int keyUp, int keyDown, int keyLeft,
+                                     int keyRight) {
+    Game::PlayerActions result;
+    result.set(Game::PlayerAction::GO_UP,
+               glfwGetKey(window, keyUp) == GLFW_PRESS);
+    result.set(Game::PlayerAction::GO_DOWN,
+               glfwGetKey(window, keyDown) == GLFW_PRESS);
+    result.set(Game::PlayerAction::GO_LEFT,
+               glfwGetKey(window, keyLeft) == GLFW_PRESS);
+    result.set(Game::PlayerAction::GO_RIGHT,
+               glfwGetKey(window, keyRight) == GLFW_PRESS);
+    return result;
   };
-  auto game1 = globalGame1;
-  auto game2 = globalGame2;
-  UpdateKeysetStateMachines(window);
-  playerAction(globalKeyState2.Read(), game2.get());
-  playerAction(globalKeyState1.Read(), game1.get());
+
+  const auto game1 = globalGame1;
+  const auto game2 = globalGame2;
+  const auto lastGameActionTimePoint = globalLastGameActionTimePoint;
+  const auto now = std::chrono::steady_clock::now();
+  const auto secondsElapse =
+      std::chrono::duration_cast<std::chrono::duration<double>>(
+          now - lastGameActionTimePoint)
+          .count();
+  game1->ApplyPlayerActions(readPlayerActions(GLFW_KEY_UP, GLFW_KEY_DOWN,
+                                              GLFW_KEY_LEFT, GLFW_KEY_RIGHT),
+                            secondsElapse);
+  game2->ApplyPlayerActions(
+      readPlayerActions(GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D),
+      secondsElapse);
+  globalLastGameActionTimePoint = now;
+
   const auto lshift = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
   const auto rshift = (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
   if (lshift && !rshift) {
@@ -284,8 +261,8 @@ void Draw() {
   glLoadIdentity();
   glOrtho(bottomLeft.x, topRight.x, bottomLeft.y, topRight.y, -5.0, 5.0);
   glCallList(globalSceneDisplayLists + globalPalette);
-  DrawGamePlayer(*game1, Colour3f{0.94f, 0.72f, 0.82f}, 3.0f);
-  DrawGamePlayer(*game2, Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
+  DrawGamePlayer(game1->GetPlayerState(), Colour3f{0.94f, 0.72f, 0.82f}, 3.0f);
+  DrawGamePlayer(game2->GetPlayerState(), Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
   {
     const auto sp = GetStandardGlyph(" ");
     glMatrixMode(GL_MODELVIEW);
@@ -409,11 +386,11 @@ int SubMain() {
     {
       auto game1 = globalGame1;
       auto game2 = globalGame2;
-      if ((game1->GetGameState() == GameState::COMPLETE &&
-           game2->GetGameState() == GameState::COMPLETE) ||
-          (game1->GetPlayerLocation() == game2->GetPlayerLocation() &&
-           (game1->GetGameState() == GameState::COMPLETE ||
-            game2->GetGameState() == GameState::COMPLETE))) {
+      auto player1State = game1->GetPlayerState();
+      auto player2State = game2->GetPlayerState();
+      if ((player1State.touchedExit && player2State.touchedExit) ||
+          (player1State.location.IsCloseTo(player2State.location) &&
+           (player1State.touchedExit || player2State.touchedExit))) {
         globalGameScore += 1;
         MakeNewMap();
       }

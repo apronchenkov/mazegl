@@ -6,38 +6,46 @@
 
 #include "game/GameMap.h"
 
+#include <bitset>
 #include <memory>
 
 namespace u7::game {
 
-enum class GameState {
-  IN_PROGRESS,
-  COMPLETE,
-};
-
-enum class PlayerAction {
-  GO_UP,
-  GO_LEFT,
-  GO_RIGHT,
-  GO_DOWN,
-};
-
 class Game {
  public:
+  struct Location {
+    double x = 0.0;
+    double y = 0.0;
+
+    bool IsCloseTo(const Location& rhs) const;
+  };
+
+  struct PlayerState {
+    Location location = {};
+    bool touchedExit = false;
+  };
+
+  enum PlayerAction {
+    GO_UP,
+    GO_LEFT,
+    GO_RIGHT,
+    GO_DOWN,
+    LAST = GO_DOWN,
+  };
+
+  using PlayerActions = std::bitset<PlayerAction::LAST + 1>;
+
   explicit Game(std::shared_ptr<const GameMap> map);
 
   const GameMap& GetGameMap() const { return *map_; }
 
-  GameState GetGameState() const { return gameState_; }
+  PlayerState GetPlayerState() const { return playerState_; }
 
-  GameMap::Location GetPlayerLocation() const { return playerLocation_; }
-
-  void PerformPlayerAction(PlayerAction action);
+  void ApplyPlayerActions(PlayerActions actions, double seconds);
 
  private:
   std::shared_ptr<const GameMap> map_;
-  GameMap::Location playerLocation_;
-  GameState gameState_ = GameState::IN_PROGRESS;
+  PlayerState playerState_;
 };
 
 }  // namespace u7::game

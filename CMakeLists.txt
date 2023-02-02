@@ -29,7 +29,6 @@ add_executable(mazegl
         game/GameMap.h
         game/Glyph.cpp
         game/Glyph.h
-        game/KeyStateMachine.h
         game/SceneView.cpp
         game/SceneView.h
         game/main.cpp)
