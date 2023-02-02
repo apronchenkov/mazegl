@@ -49,7 +49,7 @@ Game::Game(std::shared_ptr<const GameMap> map) : map_(std::move(map)) {
 }
 
 void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
-  constexpr double kSpeed = 6.0;
+  constexpr double kSpeed = 10.0;
   while (seconds > 0) {
     const GameMap::Location mapLoc = {
         static_cast<int>(std::round(playerState_.location.x)),

@@ -208,16 +208,31 @@ void KeyCallback(GLFWwindow* window, int key, int /*scancode*/, int action,
 
 void KeyH(GLFWwindow* window) {
   const auto readPlayerActions = [&](int keyUp, int keyDown, int keyLeft,
-                                     int keyRight) {
+                                     int keyRight, int gamepadId) {
     Game::PlayerActions result;
-    result.set(Game::PlayerAction::GO_UP,
-               glfwGetKey(window, keyUp) == GLFW_PRESS);
-    result.set(Game::PlayerAction::GO_DOWN,
-               glfwGetKey(window, keyDown) == GLFW_PRESS);
-    result.set(Game::PlayerAction::GO_LEFT,
-               glfwGetKey(window, keyLeft) == GLFW_PRESS);
-    result.set(Game::PlayerAction::GO_RIGHT,
-               glfwGetKey(window, keyRight) == GLFW_PRESS);
+    {
+      result.set(Game::PlayerAction::GO_UP,
+                 glfwGetKey(window, keyUp) == GLFW_PRESS);
+      result.set(Game::PlayerAction::GO_DOWN,
+                 glfwGetKey(window, keyDown) == GLFW_PRESS);
+      result.set(Game::PlayerAction::GO_LEFT,
+                 glfwGetKey(window, keyLeft) == GLFW_PRESS);
+      result.set(Game::PlayerAction::GO_RIGHT,
+                 glfwGetKey(window, keyRight) == GLFW_PRESS);
+    }
+    GLFWgamepadstate gamepadState;
+    if (glfwGetGamepadState(gamepadId, &gamepadState)) {
+      float x = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
+      float y = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
+      float l = hypot(x, y);
+      if (l > 0.33) {
+        const double phi = std::atan2(-y, x) / 3.1415926535897;
+        result.set(Game::PlayerAction::GO_UP, phi <= 0.875 && phi >= 0.125);
+        result.set(Game::PlayerAction::GO_DOWN, phi <= -0.125 && phi >= -0.875);
+        result.set(Game::PlayerAction::GO_LEFT, phi <= -0.625 || phi >= 0.625);
+        result.set(Game::PlayerAction::GO_RIGHT, phi <= 0.375 && phi >= -0.375);
+      }
+    }
     return result;
   };
 
@@ -229,11 +244,13 @@ void KeyH(GLFWwindow* window) {
       std::chrono::duration_cast<std::chrono::duration<double>>(
           now - lastGameActionTimePoint)
           .count();
-  game1->ApplyPlayerActions(readPlayerActions(GLFW_KEY_UP, GLFW_KEY_DOWN,
-                                              GLFW_KEY_LEFT, GLFW_KEY_RIGHT),
-                            secondsElapse);
+  game1->ApplyPlayerActions(
+      readPlayerActions(GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_LEFT,
+                        GLFW_KEY_RIGHT, GLFW_JOYSTICK_1),
+      secondsElapse);
   game2->ApplyPlayerActions(
-      readPlayerActions(GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D),
+      readPlayerActions(GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D,
+                        GLFW_JOYSTICK_2),
       secondsElapse);
   globalLastGameActionTimePoint = now;
 
