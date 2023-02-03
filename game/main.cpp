@@ -418,7 +418,8 @@ int SubMain() {
       auto player1State = game1->GetPlayerState();
       auto player2State = game2->GetPlayerState();
       if ((player1State.touchedExit && player2State.touchedExit) ||
-          (player1State.location.IsCloseTo(player2State.location) &&
+          (std::fabs(player1State.location.x - player2State.location.x) < 0.5 &&
+           std::fabs(player1State.location.y - player2State.location.y) < 0.5 &&
            (player1State.touchedExit || player2State.touchedExit))) {
         globalGameScore += 1;
         MakeNewMap();

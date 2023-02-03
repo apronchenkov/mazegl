@@ -26,13 +26,12 @@ class Game {
 
     Location() = default;
     Location(const GameMap::Location& rhs) : x(rhs.x), y(rhs.y) {}
-    bool IsCloseTo(const Location& rhs) const;
   };
 
   struct PlayerState {
     Location location = {};
     bool touchedExit = false;
-    double continuesActionSeconds = 0.0;
+    double speed = 0.0;
   };
 
   explicit Game(std::shared_ptr<const GameMap> map);

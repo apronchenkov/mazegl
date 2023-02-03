@@ -9,6 +9,8 @@ namespace u7::game {
 namespace {
 
 constexpr double kEps = 1.0 / 1024.0;
+constexpr double kBaseSpeed = 3.0;
+constexpr double kAcceleration = 20.0;
 
 Game::PlayerState NormalizePlayerState(Game::PlayerState playerState,
                                        const GameMap& map) {
@@ -37,10 +39,6 @@ Game::PlayerState NormalizePlayerState(Game::PlayerState playerState,
 
 }  // namespace
 
-bool Game::Location::IsCloseTo(const Location& rhs) const {
-  return std::fabs(x - rhs.x) < kEps && std::fabs(y - rhs.y) < kEps;
-}
-
 Game::Game(std::shared_ptr<const GameMap> map) : map_(std::move(map)) {
   playerState_.location.x = map_->GetEntranceLocation().x;
   playerState_.location.y = map_->GetEntranceLocation().y;
@@ -49,11 +47,27 @@ Game::Game(std::shared_ptr<const GameMap> map) : map_(std::move(map)) {
 
 void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
   if (actions.none()) {
-    playerState_.continuesActionSeconds = 0.0;
-    playerState_ = NormalizePlayerState(playerState_, *map_);
+    playerState_.speed = 0.0;
     return;
   }
-  while (seconds > 0) {
+  playerState_.speed = std::max(playerState_.speed, kBaseSpeed);
+  double reachableDistance =
+      playerState_.speed * seconds + kAcceleration * seconds * seconds / 2.0;
+  playerState_.speed += kAcceleration * seconds;
+  const auto goTo = [&](Location nextLoc) {
+    const double dx = nextLoc.x - playerState_.location.x;
+    const double dy = nextLoc.y - playerState_.location.y;
+    const double distance = std::fabs(dx) + std::fabs(dy);
+    if (distance <= reachableDistance) {
+      playerState_.location = nextLoc;
+      reachableDistance -= distance;
+    } else {
+      playerState_.location.x += dx * reachableDistance / distance;
+      playerState_.location.y += dy * reachableDistance / distance;
+      reachableDistance = 0.0;
+    }
+  };
+  while (reachableDistance > kEps) {
     const GameMap::Location loc = {
         static_cast<int>(std::round(playerState_.location.x)),
         static_cast<int>(std::round(playerState_.location.y)),
@@ -154,29 +168,12 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
         nextLoc = loc.Left();
       }
     }
-    const double xDelta = nextLoc.x - playerState_.location.x;
-    const double yDelta = nextLoc.y - playerState_.location.y;
-    const double delta = std::fabs(xDelta) + std::fabs(yDelta);
-    if (delta < kEps) {
-      playerState_.continuesActionSeconds += seconds;
-      playerState_ = NormalizePlayerState(playerState_, *map_);
-      return;
+    if (playerState_.location.x == nextLoc.x &&
+        playerState_.location.y == nextLoc.y) {
+      playerState_.speed = 0.0;
+      break;
     }
-
-    double speed = 5.0;
-    double fs = seconds;
-    if (playerState_.continuesActionSeconds < 0.6) {
-      fs = std::min(fs, 0.6 - playerState_.continuesActionSeconds);
-    } else {
-      speed = 15.0;
-    }
-
-    const double scale = std::min(fs * speed, delta) / delta;
-    seconds -= scale * delta / speed;
-    playerState_.location.x += scale * xDelta;
-    playerState_.location.y += scale * yDelta;
-    playerState_.continuesActionSeconds += fs;
-    playerState_ = NormalizePlayerState(playerState_, *map_);
+    goTo(nextLoc);
   }
   playerState_ = NormalizePlayerState(playerState_, *map_);
 }
