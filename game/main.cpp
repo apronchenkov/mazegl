@@ -211,14 +211,18 @@ void KeyH(GLFWwindow* window) {
                                      int keyRight, int gamepadId) {
     Game::PlayerActions result;
     {
-      result.set(Game::PlayerAction::GO_UP,
-                 glfwGetKey(window, keyUp) == GLFW_PRESS);
-      result.set(Game::PlayerAction::GO_DOWN,
-                 glfwGetKey(window, keyDown) == GLFW_PRESS);
-      result.set(Game::PlayerAction::GO_LEFT,
-                 glfwGetKey(window, keyLeft) == GLFW_PRESS);
-      result.set(Game::PlayerAction::GO_RIGHT,
-                 glfwGetKey(window, keyRight) == GLFW_PRESS);
+      if (glfwGetKey(window, keyUp) == GLFW_PRESS) {
+        result |= Game::kPlayerGoUp;
+      }
+      if (glfwGetKey(window, keyDown) == GLFW_PRESS) {
+        result |= Game::kPlayerGoDown;
+      }
+      if (glfwGetKey(window, keyLeft) == GLFW_PRESS) {
+        result |= Game::kPlayerGoLeft;
+      }
+      if (glfwGetKey(window, keyRight) == GLFW_PRESS) {
+        result |= Game::kPlayerGoRight;
+      }
     }
     GLFWgamepadstate gamepadState;
     if (glfwGetGamepadState(gamepadId, &gamepadState)) {
@@ -227,10 +231,18 @@ void KeyH(GLFWwindow* window) {
       float l = hypot(x, y);
       if (l > 0.33) {
         const double phi = std::atan2(-y, x) / 3.1415926535897;
-        result.set(Game::PlayerAction::GO_UP, phi <= 0.875 && phi >= 0.125);
-        result.set(Game::PlayerAction::GO_DOWN, phi <= -0.125 && phi >= -0.875);
-        result.set(Game::PlayerAction::GO_LEFT, phi <= -0.625 || phi >= 0.625);
-        result.set(Game::PlayerAction::GO_RIGHT, phi <= 0.375 && phi >= -0.375);
+        if (phi <= 0.875 && phi >= 0.125) {
+          result |= Game::kPlayerGoUp;
+        }
+        if (phi <= -0.125 && phi >= -0.875) {
+          result |= Game::kPlayerGoDown;
+        }
+        if (phi <= -0.625 || phi >= 0.625) {
+          result |= Game::kPlayerGoLeft;
+        }
+        if (phi <= 0.375 && phi >= -0.375) {
+          result |= Game::kPlayerGoRight;
+        }
       }
     }
     return result;

@@ -4,7 +4,6 @@
 #include "game/Game.h"
 
 #include <cmath>
-#include <iostream>
 
 namespace u7::game {
 namespace {
@@ -49,82 +48,123 @@ Game::Game(std::shared_ptr<const GameMap> map) : map_(std::move(map)) {
 }
 
 void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
-  constexpr double kSpeed = 10.0;
+  constexpr double kSpeed = 5.0;
   while (seconds > 0) {
-    const GameMap::Location mapLoc = {
+    const GameMap::Location loc = {
         static_cast<int>(std::round(playerState_.location.x)),
         static_cast<int>(std::round(playerState_.location.y)),
     };
-    const Location deltaLoc = {
-        playerState_.location.x - mapLoc.x,
-        playerState_.location.y - mapLoc.y,
-    };
-    const double maxDelta = seconds * kSpeed;
-    double deltaU = 0.0;
-    double deltaD = 0.0;
-    double deltaL = 0.0;
-    double deltaR = 0.0;
+    const double fx = playerState_.location.x - loc.x;
+    const double fy = playerState_.location.y - loc.y;
+    Location nextLoc = playerState_.location;
+    if (actions == kPlayerGoUp) {
+      if (std::fabs(fx) < kEps) {
+        if (fy <= -kEps) {
+          nextLoc = loc;
+        } else if (map_->IsHall(loc.Up())) {
+          nextLoc = loc.Up();
+        }
+      } else if (map_->IsHall(loc.Up())) {
+        nextLoc = loc;
+      }
+    } else if (actions == kPlayerGoDown) {
+      if (std::fabs(fx) < kEps) {
+        if (fy >= kEps) {
+          nextLoc = loc;
+        } else if (map_->IsHall(loc.Down())) {
+          nextLoc = loc.Down();
+        }
+      } else if (map_->IsHall(loc.Down())) {
+        nextLoc = loc;
+      }
+    } else if (actions == kPlayerGoLeft) {
+      if (std::fabs(fy) < kEps) {
+        if (fx >= kEps) {
+          nextLoc = loc;
+        } else if (map_->IsHall(loc.Left())) {
+          nextLoc = loc.Left();
+        }
+      } else if (map_->IsHall(loc.Left())) {
+        nextLoc = loc;
+      }
+    } else if (actions == kPlayerGoRight) {
+      if (std::fabs(fy) < kEps) {
+        if (fx <= -kEps) {
+          nextLoc = loc;
+        } else if (map_->IsHall(loc.Right())) {
+          nextLoc = loc.Right();
+        }
+      } else if (map_->IsHall(loc.Right())) {
+        nextLoc = loc;
+      }
+    }
 
-    if (std::fabs(deltaLoc.x) < kEps && std::fabs(deltaLoc.y) < kEps) {
-      if (map_->IsHall(mapLoc.Up())) {
-        deltaU = 1.0 - deltaLoc.y;
-      }
-      if (map_->IsHall(mapLoc.Down())) {
-        deltaD = 1.0 + deltaLoc.y;
-      }
-      if (map_->IsHall(mapLoc.Left())) {
-        deltaL = 1.0 + deltaLoc.x;
-      }
-      if (map_->IsHall(mapLoc.Right())) {
-        deltaR = 1.0 - deltaLoc.x;
-      }
-    } else {
-      if (deltaLoc.y >= kEps) {
-        deltaU = (map_->IsHall(mapLoc.Up()) ? 1.0 - deltaLoc.y : 0.0);
-        deltaD = deltaLoc.y;
-      } else if (deltaLoc.y <= -kEps) {
-        deltaU = -deltaLoc.y;
-        deltaD = (map_->IsHall(mapLoc.Down()) ? 1.0 + deltaLoc.y : 0.0);
-      }
-      if (deltaLoc.x >= kEps) {
-        deltaL = deltaLoc.x;
-        deltaR = (map_->IsHall(mapLoc.Right()) ? 1.0 - deltaLoc.x : 0.0);
-      } else if (deltaLoc.x <= -kEps) {
-        deltaL = (map_->IsHall(mapLoc.Left()) ? 1.0 + deltaLoc.x : 0.0);
-        deltaR = -deltaLoc.x;
+    if (actions == (kPlayerGoUp | kPlayerGoRight)) {
+      if (fx <= -kEps || fy <= -kEps) {
+        nextLoc = loc;
+      } else if (fy >= kEps) {
+        nextLoc = loc.Up();
+      } else if (fx >= kEps) {
+        nextLoc = loc.Right();
+      } else if (map_->IsHall(loc.Up()) && !map_->IsHall(loc.Right())) {
+        nextLoc = loc.Up();
+      } else if (!map_->IsHall(loc.Up()) && map_->IsHall(loc.Right())) {
+        nextLoc = loc.Right();
       }
     }
-    const bool u = (actions.test(PlayerAction::GO_UP) && deltaU > 0);
-    const bool d = (actions.test(PlayerAction::GO_DOWN) && deltaD > 0);
-    const bool l = (actions.test(PlayerAction::GO_LEFT) && deltaL > 0);
-    const bool r = (actions.test(PlayerAction::GO_RIGHT) && deltaR > 0);
-    if (u + d + l + r != 1) {
-      return;  // no aciton
+
+    if (actions == (kPlayerGoUp | kPlayerGoLeft)) {
+      if (fx >= kEps || fy <= -kEps) {
+        nextLoc = loc;
+      } else if (fy >= kEps) {
+        nextLoc = loc.Up();
+      } else if (fx <= -kEps) {
+        nextLoc = loc.Left();
+      } else if (map_->IsHall(loc.Up()) && !map_->IsHall(loc.Left())) {
+        nextLoc = loc.Up();
+      } else if (!map_->IsHall(loc.Up()) && map_->IsHall(loc.Left())) {
+        nextLoc = loc.Left();
+      }
     }
-    if (u) {
-      const double delta = std::min(maxDelta, deltaU);
-      playerState_.location.x = mapLoc.x;
-      playerState_.location.y += delta;
-      seconds -= delta / kSpeed;
+
+    if (actions == (kPlayerGoDown | kPlayerGoRight)) {
+      if (fx <= -kEps || fy >= kEps) {
+        nextLoc = loc;
+      } else if (fy <= -kEps) {
+        nextLoc = loc.Down();
+      } else if (fx >= kEps) {
+        nextLoc = loc.Right();
+      } else if (map_->IsHall(loc.Down()) && !map_->IsHall(loc.Right())) {
+        nextLoc = loc.Down();
+      } else if (!map_->IsHall(loc.Down()) && map_->IsHall(loc.Right())) {
+        nextLoc = loc.Right();
+      }
     }
-    if (d) {
-      const double delta = std::min(maxDelta, deltaD);
-      playerState_.location.x = mapLoc.x;
-      playerState_.location.y -= delta;
-      seconds -= delta / kSpeed;
+
+    if (actions == (kPlayerGoDown | kPlayerGoLeft)) {
+      if (fx >= kEps || fy >= kEps) {
+        nextLoc = loc;
+      } else if (fy <= -kEps) {
+        nextLoc = loc.Down();
+      } else if (fx <= -kEps) {
+        nextLoc = loc.Left();
+      } else if (map_->IsHall(loc.Down()) && !map_->IsHall(loc.Left())) {
+        nextLoc = loc.Down();
+      } else if (!map_->IsHall(loc.Down()) && map_->IsHall(loc.Left())) {
+        nextLoc = loc.Left();
+      }
     }
-    if (l) {
-      const double delta = std::min(maxDelta, deltaL);
-      playerState_.location.x -= delta;
-      playerState_.location.y = mapLoc.y;
-      seconds -= delta / kSpeed;
+
+    const double xDelta = nextLoc.x - playerState_.location.x;
+    const double yDelta = nextLoc.y - playerState_.location.y;
+    const double delta = std::fabs(xDelta) + std::fabs(yDelta);
+    if (delta < kEps) {
+      break;
     }
-    if (r) {
-      const double delta = std::min(maxDelta, deltaR);
-      playerState_.location.x += delta;
-      playerState_.location.y = mapLoc.y;
-      seconds -= delta / kSpeed;
-    }
+    const double scale = std::min(seconds * kSpeed, delta) / delta;
+    seconds -= scale * delta / kSpeed;
+    playerState_.location.x += scale * xDelta;
+    playerState_.location.y += scale * yDelta;
     playerState_ = NormalizePlayerState(playerState_, *map_);
   }
 }

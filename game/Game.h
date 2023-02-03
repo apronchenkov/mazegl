@@ -13,10 +13,19 @@ namespace u7::game {
 
 class Game {
  public:
+  using PlayerActions = std::bitset<4>;
+
+  static constexpr PlayerActions kPlayerGoUp{0b0001};
+  static constexpr PlayerActions kPlayerGoDown{0b0010};
+  static constexpr PlayerActions kPlayerGoLeft{0b0100};
+  static constexpr PlayerActions kPlayerGoRight{0b1000};
+
   struct Location {
     double x = 0.0;
     double y = 0.0;
 
+    Location() = default;
+    Location(const GameMap::Location& rhs) : x(rhs.x), y(rhs.y) {}
     bool IsCloseTo(const Location& rhs) const;
   };
 
@@ -24,16 +33,6 @@ class Game {
     Location location = {};
     bool touchedExit = false;
   };
-
-  enum PlayerAction {
-    GO_UP,
-    GO_LEFT,
-    GO_RIGHT,
-    GO_DOWN,
-    LAST = GO_DOWN,
-  };
-
-  using PlayerActions = std::bitset<PlayerAction::LAST + 1>;
 
   explicit Game(std::shared_ptr<const GameMap> map);
 
