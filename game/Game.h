@@ -32,6 +32,7 @@ class Game {
   struct PlayerState {
     Location location = {};
     bool touchedExit = false;
+    double continuesActionSeconds = 0.0;
   };
 
   explicit Game(std::shared_ptr<const GameMap> map);

@@ -48,7 +48,11 @@ Game::Game(std::shared_ptr<const GameMap> map) : map_(std::move(map)) {
 }
 
 void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
-  constexpr double kSpeed = 5.0;
+  if (actions.none()) {
+    playerState_.continuesActionSeconds = 0.0;
+    playerState_ = NormalizePlayerState(playerState_, *map_);
+    return;
+  }
   while (seconds > 0) {
     const GameMap::Location loc = {
         static_cast<int>(std::round(playerState_.location.x)),
@@ -98,7 +102,6 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
         nextLoc = loc;
       }
     }
-
     if (actions == (kPlayerGoUp | kPlayerGoRight)) {
       if (fx <= -kEps || fy <= -kEps) {
         nextLoc = loc;
@@ -112,7 +115,6 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
         nextLoc = loc.Right();
       }
     }
-
     if (actions == (kPlayerGoUp | kPlayerGoLeft)) {
       if (fx >= kEps || fy <= -kEps) {
         nextLoc = loc;
@@ -126,7 +128,6 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
         nextLoc = loc.Left();
       }
     }
-
     if (actions == (kPlayerGoDown | kPlayerGoRight)) {
       if (fx <= -kEps || fy >= kEps) {
         nextLoc = loc;
@@ -140,7 +141,6 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
         nextLoc = loc.Right();
       }
     }
-
     if (actions == (kPlayerGoDown | kPlayerGoLeft)) {
       if (fx >= kEps || fy >= kEps) {
         nextLoc = loc;
@@ -154,19 +154,31 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
         nextLoc = loc.Left();
       }
     }
-
     const double xDelta = nextLoc.x - playerState_.location.x;
     const double yDelta = nextLoc.y - playerState_.location.y;
     const double delta = std::fabs(xDelta) + std::fabs(yDelta);
     if (delta < kEps) {
-      break;
+      playerState_.continuesActionSeconds += seconds;
+      playerState_ = NormalizePlayerState(playerState_, *map_);
+      return;
     }
-    const double scale = std::min(seconds * kSpeed, delta) / delta;
-    seconds -= scale * delta / kSpeed;
+
+    double speed = 5.0;
+    double fs = seconds;
+    if (playerState_.continuesActionSeconds < 0.6) {
+      fs = std::min(fs, 0.6 - playerState_.continuesActionSeconds);
+    } else {
+      speed = 15.0;
+    }
+
+    const double scale = std::min(fs * speed, delta) / delta;
+    seconds -= scale * delta / speed;
     playerState_.location.x += scale * xDelta;
     playerState_.location.y += scale * yDelta;
+    playerState_.continuesActionSeconds += fs;
     playerState_ = NormalizePlayerState(playerState_, *map_);
   }
+  playerState_ = NormalizePlayerState(playerState_, *map_);
 }
 
 }  // namespace u7::game
