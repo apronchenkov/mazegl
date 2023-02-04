@@ -277,8 +277,14 @@ void KeyH(GLFWwindow* window) {
   const auto secondsElapse =
       (now - std::exchange(globalLastGameActionTimePointSeconds, now));
 
-  globalGame1->ApplyPlayerActions(player1Actions, secondsElapse);
-  globalGame2->ApplyPlayerActions(player2Actions, secondsElapse);
+  const auto game1 = globalGame1;
+  const auto game2 = globalGame2;
+  game1->ApplyPlayerActions(player1Actions, secondsElapse);
+  game2->ApplyPlayerActions(player2Actions, secondsElapse);
+  const auto player1Loc = game1->GetPlayerState().location;
+  const auto player2Loc = game2->GetPlayerState().location;
+  globalSceneView.ProcessPointOfInterest(player1Loc.x, player1Loc.y);
+  globalSceneView.ProcessPointOfInterest(player2Loc.x, player2Loc.y);
 
   const auto lshift = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
   const auto rshift = (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
@@ -346,6 +352,7 @@ int SubMain() {
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
+  glLineWidth(2.0f);
 
   globalSceneDisplayLists = glGenLists(3);
 
