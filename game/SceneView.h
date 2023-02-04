@@ -16,24 +16,25 @@ struct SceneCoord {
 
 class SceneView {
  public:
-  enum { kInnerScreenMargin = 256 };
+  static constexpr int kInnerScreenMargin = 256;
+
   void ReshapeScreen(int screenWidth, int screenHeight) {
     screenWidth_ = screenWidth;
     screenHeight_ = screenHeight;
   }
 
-  double GetScreenScale() const { return screenScale_; }
+  [[nodiscard]] double GetScreenScale() const { return screenScale_; }
 
-  int GetScreenWidth() const { return screenWidth_; }
+  [[nodiscard]] int GetScreenWidth() const { return screenWidth_; }
 
-  int GetScreenHeight() const { return screenHeight_; }
+  [[nodiscard]] int GetScreenHeight() const { return screenHeight_; }
 
-  SceneCoord GetBottomLeft() const {
+  [[nodiscard]] SceneCoord GetBottomLeft() const {
     return {sceneViewCentre_.x - screenWidth_ * screenScale_ / 2,
             sceneViewCentre_.y - screenHeight_ * screenScale_ / 2};
   }
 
-  SceneCoord GetTopRight() const {
+  [[nodiscard]] SceneCoord GetTopRight() const {
     return {sceneViewCentre_.x + screenWidth_ * screenScale_ / 2,
             sceneViewCentre_.y + screenHeight_ * screenScale_ / 2};
   }

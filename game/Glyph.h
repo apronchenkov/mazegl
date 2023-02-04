@@ -12,7 +12,8 @@ namespace u7::game {
 
 struct Glyph {
   struct Pxl {
-    int8_t x, y;
+    int8_t x;
+    int8_t y;
   };
   Pxl base;
   Pxl dimension;

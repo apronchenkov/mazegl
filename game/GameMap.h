@@ -17,10 +17,10 @@ class GameMap {
     int x = 0;
     int y = 0;
 
-    Location Up() const { return Location{x, y + 1}; };
-    Location Down() const { return Location{x, y - 1}; };
-    Location Left() const { return Location{x - 1, y}; };
-    Location Right() const { return Location{x + 1, y}; };
+    [[nodiscard]] Location Up() const { return Location{x, y + 1}; };
+    [[nodiscard]] Location Down() const { return Location{x, y - 1}; };
+    [[nodiscard]] Location Left() const { return Location{x - 1, y}; };
+    [[nodiscard]] Location Right() const { return Location{x + 1, y}; };
 
     bool operator==(const Location& rhs) const {
       return x == rhs.x && y == rhs.y;
@@ -31,34 +31,32 @@ class GameMap {
 
   GameMap(maze::Maze maze, Location entrance, Location exit);
 
-  int GetWidth() const { return maze_.m(); }
+  [[nodiscard]] int GetWidth() const { return maze_.m(); }
 
-  int GetHeight() const { return maze_.n(); }
+  [[nodiscard]] int GetHeight() const { return maze_.n(); }
 
-  bool Contains(Location loc) const {
+  [[nodiscard]] bool Contains(Location loc) const {
     return (loc.x >= 0 && loc.x < maze_.m() && loc.y >= 0 && loc.y < maze_.n());
   }
 
-  bool IsHall(Location loc) const {
+  [[nodiscard]] bool IsHall(Location loc) const {
     return Contains(loc) && maze_.UnsafeAt(loc.y, loc.x);
   }
 
-  bool IsWall(Location loc) const {
+  [[nodiscard]] bool IsWall(Location loc) const {
     return !Contains(loc) || !maze_.UnsafeAt(loc.y, loc.x);
   }
 
-  Location GetEntranceLocation() const { return entrance_; }
+  [[nodiscard]] Location GetEntranceLocation() const { return entrance_; }
 
-  Location GetExitLocation() const { return exit_; }
+  [[nodiscard]] Location GetExitLocation() const { return exit_; }
 
-  size_t GetDistanceToExit(Location loc) const {
-    if (Contains(loc)) {
-      return distanceToExit_.UnsafeAt(loc.y, loc.x);
-    }
-    return static_cast<size_t>(-1);
+  [[nodiscard]] size_t GetDistanceToExit(Location loc) const {
+    return (Contains(loc) ? distanceToExit_.UnsafeAt(loc.y, loc.x)
+                          : static_cast<size_t>(-1));
   }
 
-  size_t MaxDistanceToExit() const { return maxDistanceToExit_; }
+  [[nodiscard]] size_t MaxDistanceToExit() const { return maxDistanceToExit_; }
 
  private:
   void InitDistanceToExit();

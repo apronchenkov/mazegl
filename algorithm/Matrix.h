@@ -15,13 +15,13 @@ class Matrix {
 
   Matrix(int n, int m) : n_(n), m_(m), a_(new T[static_cast<size_t>(n) * m]) {}
 
-  Matrix(Matrix&& rhs) = default;
+  Matrix(Matrix&& rhs) noexcept = default;
 
-  Matrix& operator=(Matrix&& rhs) = default;
+  Matrix& operator=(Matrix&& rhs) noexcept = default;
 
-  int n() const { return n_; }
+  [[nodiscard]] int n() const { return n_; }
 
-  int m() const { return m_; }
+  [[nodiscard]] int m() const { return m_; }
 
   void Fill(const T& x) {
     const size_t k = static_cast<size_t>(n_) * m_;

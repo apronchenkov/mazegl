@@ -14,7 +14,7 @@ struct Cell {
   int weight;
   int i;
   int j;
-  auto tie() const { return std::tie(weight, i, j); }
+  [[nodiscard]] auto tie() const { return std::tie(weight, i, j); }
 };
 
 struct CellOrder {

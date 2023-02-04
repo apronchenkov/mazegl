@@ -9,8 +9,8 @@ namespace u7::game {
 namespace {
 
 constexpr double kEps = 1.0 / 1024.0;
-constexpr double kBaseSpeed = 3.0;
-constexpr double kAcceleration = 20.0;
+constexpr double kBaseSpeed = 2.0;
+constexpr double kAcceleration = 15.0;
 
 Game::PlayerState NormalizePlayerState(Game::PlayerState playerState,
                                        const GameMap& map) {
@@ -46,10 +46,6 @@ Game::Game(std::shared_ptr<const GameMap> map) : map_(std::move(map)) {
 }
 
 void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
-  if (actions.none()) {
-    playerState_.speed = 0.0;
-    return;
-  }
   playerState_.speed = std::max(playerState_.speed, kBaseSpeed);
   double reachableDistance =
       playerState_.speed * seconds + kAcceleration * seconds * seconds / 2.0;
@@ -115,8 +111,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (map_->IsHall(loc.Right())) {
         nextLoc = loc;
       }
-    }
-    if (actions == (kPlayerGoUp | kPlayerGoRight)) {
+    } else if (actions == (kPlayerGoUp | kPlayerGoRight)) {
       if (fx <= -kEps || fy <= -kEps) {
         nextLoc = loc;
       } else if (fy >= kEps) {
@@ -128,8 +123,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (!map_->IsHall(loc.Up()) && map_->IsHall(loc.Right())) {
         nextLoc = loc.Right();
       }
-    }
-    if (actions == (kPlayerGoUp | kPlayerGoLeft)) {
+    } else if (actions == (kPlayerGoUp | kPlayerGoLeft)) {
       if (fx >= kEps || fy <= -kEps) {
         nextLoc = loc;
       } else if (fy >= kEps) {
@@ -141,8 +135,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (!map_->IsHall(loc.Up()) && map_->IsHall(loc.Left())) {
         nextLoc = loc.Left();
       }
-    }
-    if (actions == (kPlayerGoDown | kPlayerGoRight)) {
+    } else if (actions == (kPlayerGoDown | kPlayerGoRight)) {
       if (fx <= -kEps || fy >= kEps) {
         nextLoc = loc;
       } else if (fy <= -kEps) {
@@ -154,8 +147,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (!map_->IsHall(loc.Down()) && map_->IsHall(loc.Right())) {
         nextLoc = loc.Right();
       }
-    }
-    if (actions == (kPlayerGoDown | kPlayerGoLeft)) {
+    } else if (actions == (kPlayerGoDown | kPlayerGoLeft)) {
       if (fx >= kEps || fy >= kEps) {
         nextLoc = loc;
       } else if (fy <= -kEps) {

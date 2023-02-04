@@ -18,21 +18,21 @@ Colour3f GetColour(float value, std::span<const Colour3f> palette) {
   }
   size_t idx1;
   size_t idx2;
-  float fractBetween = 0;
+  float fraction = 0;
   if (value <= 0) {
     idx1 = idx2 = 0;
   } else if (value >= 1) {
     idx1 = idx2 = palette.size() - 1;
   } else {
-    value *= palette.size() - 1;
+    value *= static_cast<float>(palette.size() - 1);
     idx1 = static_cast<size_t>(value);
     idx2 = idx1 + 1;
-    fractBetween = value - idx1;
+    fraction = value - static_cast<float>(idx1);
   }
   return Colour3f{
-      (palette[idx2].r - palette[idx1].r) * fractBetween + palette[idx1].r,
-      (palette[idx2].g - palette[idx1].g) * fractBetween + palette[idx1].g,
-      (palette[idx2].b - palette[idx1].b) * fractBetween + palette[idx1].b};
+      (palette[idx2].r - palette[idx1].r) * fraction + palette[idx1].r,
+      (palette[idx2].g - palette[idx1].g) * fraction + palette[idx1].g,
+      (palette[idx2].b - palette[idx1].b) * fraction + palette[idx1].b};
 }
 
 Colour3f GetCubehelixColour(float value, float startColour,
@@ -46,11 +46,11 @@ Colour3f GetCubehelixColour(float value, float startColour,
   const float lambdaGamma = std::pow(value, gamma);
   const float alpha = hue * lambdaGamma * (1 - lambdaGamma) / 2;
   return Colour3f{
-      std::clamp<float>(
-          lambdaGamma + alpha * (-0.14861 * cosPhi + 1.78277 * sinPhi), 0., 1.),
-      std::clamp<float>(
-          lambdaGamma + alpha * (-0.29227 * cosPhi - 0.90649 * sinPhi), 0., 1.),
-      std::clamp<float>(lambdaGamma + alpha * (1.97294 * cosPhi), 0.0, 1.0)};
+      std::clamp(lambdaGamma + alpha * (-0.14861f * cosPhi + 1.78277f * sinPhi),
+                 0.0f, 1.0f),
+      std::clamp(lambdaGamma + alpha * (-0.29227f * cosPhi - 0.90649f * sinPhi),
+                 0.0f, 1.0f),
+      std::clamp(lambdaGamma + alpha * (1.97294f * cosPhi), 0.0f, 1.0f)};
 }
 
 std::vector<Colour3f> GetCubehelixPalette(size_t n, float begin, float end,
@@ -66,14 +66,14 @@ std::vector<Colour3f> GetCubehelixPalette(size_t n, float begin, float end,
   }
   std::vector<Colour3f> result(n);
   for (size_t i = 0; i < n; ++i) {
-    result[i] =
-        GetCubehelixColour(begin + ((end - begin) * i) / (n - 1), startColour,
-                           numberOfColourRotations, hue, gamma);
+    result[i] = GetCubehelixColour(
+        begin + static_cast<float>((end - begin) * i) / (n - 1), startColour,
+        numberOfColourRotations, hue, gamma);
   }
   return result;
 }
 
-const std::span<const Colour3f> GetHeatmap5Palette() {
+std::span<const Colour3f> GetHeatmap5Palette() {
   static constexpr std::array result = {
       Colour3f{0, 0, 1},  // blue
       Colour3f{0, 1, 1},  // cyan

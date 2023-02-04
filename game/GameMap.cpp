@@ -51,7 +51,7 @@ void GameMap::InitDistanceToExit() {
 
 std::shared_ptr<GameMap> GenGameMap(int width, int height, maze::Rng rng,
                                     maze::GenMazeOptions options) {
-  auto maze = GenMaze(height, width, rng, options);
+  auto maze = GenMaze(height, width, std::move(rng), options);
   GameMap::Location entrance;
   GameMap::Location exit;
   int entranceD = width + height;

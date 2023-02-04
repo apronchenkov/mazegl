@@ -27,7 +27,7 @@ Colour3f GetColour(float value, std::span<const Colour3f> palette);
 //       scheme.
 //   hue: A hue parameter, which controls how saturated the colours are.
 //   gamma: A ‘gamma factor’ to emphasise either low intensity values
-//       (0 <= gamme < 1), or high intensity values (gamme >= 1).
+//       (0 <= gamma < 1), or high intensity values (gamma >= 1).
 //
 Colour3f GetCubehelixColour(float value, float startColour = 0.5f,
                             float numberOfColourRotations = -1.5f,
@@ -50,7 +50,7 @@ std::vector<Colour3f> GetCubehelixPalette(size_t n, float begin = 0.0f,
                                           float hue = 1.2f, float gamma = 1.0f);
 
 // Returns a list of colours defining a heatmap5 palette.
-const std::span<const Colour3f> GetHeatmap5Palette();
+std::span<const Colour3f> GetHeatmap5Palette();
 
 }  // namespace u7::palettes
 

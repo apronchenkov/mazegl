@@ -8,7 +8,6 @@
 
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
-#include <chrono>
 #include <cstdio>
 #include <iostream>
 #include <random>
@@ -120,9 +119,9 @@ void Print(std::string_view message) {
 int globalGameScore;
 std::shared_ptr<Game> globalGame1;
 std::shared_ptr<Game> globalGame2;
-std::chrono::steady_clock::time_point globalLastGameActionTimePoint;
+double globalLastGameActionTimePointSeconds;
 
-enum Palette { DEFAULT, CUBEHELIX, HEATMAP, LAST = HEATMAP };
+enum Palette { DEFAULT, CUBEHELIX, HEATMAP };
 Palette globalPalette = Palette::DEFAULT;
 GLuint globalSceneDisplayLists;
 
@@ -167,7 +166,7 @@ void MakeNewMap() {
       (gameMap->GetWidth() - 1) / 2.0, (gameMap->GetHeight() - 1) / 2.0});
   globalSceneView.ProcessPointOfInterest(gameMap->GetEntranceLocation().x,
                                          gameMap->GetEntranceLocation().y);
-  globalLastGameActionTimePoint = std::chrono::steady_clock::now();
+  globalLastGameActionTimePointSeconds = glfwGetTime();
 }
 
 void FramebufferSizeCallback(GLFWwindow* /*window*/, int width, int height) {
@@ -210,7 +209,7 @@ void KeyH(GLFWwindow* window) {
   const auto readPlayerActions = [&](int keyUp, int keyDown, int keyLeft,
                                      int keyRight, int gamepadId) {
     Game::PlayerActions result;
-    {
+    {  // Keyboard
       if (glfwGetKey(window, keyUp) == GLFW_PRESS) {
         result |= Game::kPlayerGoUp;
       }
@@ -224,47 +223,62 @@ void KeyH(GLFWwindow* window) {
         result |= Game::kPlayerGoRight;
       }
     }
-    GLFWgamepadstate gamepadState;
-    if (glfwGetGamepadState(gamepadId, &gamepadState)) {
-      float x = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
-      float y = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
-      float l = hypot(x, y);
-      if (l > 0.33) {
-        const double phi = std::atan2(-y, x) / 3.1415926535897;
-        if (phi <= 0.875 && phi >= 0.125) {
+    {  // Gamepad hats
+      int hatCount = 0;
+      const unsigned char* hats = glfwGetJoystickHats(gamepadId, &hatCount);
+      for (int i = 0; i < hatCount; ++i) {
+        if (hats[i] & GLFW_HAT_UP) {
           result |= Game::kPlayerGoUp;
         }
-        if (phi <= -0.125 && phi >= -0.875) {
+        if (hats[i] & GLFW_HAT_DOWN) {
           result |= Game::kPlayerGoDown;
         }
-        if (phi <= -0.625 || phi >= 0.625) {
+        if (hats[i] & GLFW_HAT_LEFT) {
           result |= Game::kPlayerGoLeft;
         }
-        if (phi <= 0.375 && phi >= -0.375) {
+        if (hats[i] & GLFW_HAT_RIGHT) {
           result |= Game::kPlayerGoRight;
         }
       }
+      // Gamepad axis
+      if (GLFWgamepadstate gamepadState;
+          glfwGetGamepadState(gamepadId, &gamepadState)) {
+        auto handleAxis = [&](float x, float y) {
+          constexpr float kThreshold = 0.33;
+          if (y < -kThreshold) {
+            result |= Game::kPlayerGoUp;
+          }
+          if (y > kThreshold) {
+            result |= Game::kPlayerGoDown;
+          }
+          if (x < -kThreshold) {
+            result |= Game::kPlayerGoLeft;
+          }
+          if (x > kThreshold) {
+            result |= Game::kPlayerGoRight;
+          }
+        };
+        handleAxis(gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_X],
+                   gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+        handleAxis(gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_X],
+                   gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+      }
+      return result;
     }
-    return result;
   };
 
-  const auto game1 = globalGame1;
-  const auto game2 = globalGame2;
-  const auto lastGameActionTimePoint = globalLastGameActionTimePoint;
-  const auto now = std::chrono::steady_clock::now();
-  const auto secondsElapse =
-      std::chrono::duration_cast<std::chrono::duration<double>>(
-          now - lastGameActionTimePoint)
-          .count();
-  game1->ApplyPlayerActions(
+  const auto player1Actions =
       readPlayerActions(GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_LEFT,
-                        GLFW_KEY_RIGHT, GLFW_JOYSTICK_1),
-      secondsElapse);
-  game2->ApplyPlayerActions(
-      readPlayerActions(GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D,
-                        GLFW_JOYSTICK_2),
-      secondsElapse);
-  globalLastGameActionTimePoint = now;
+                        GLFW_KEY_RIGHT, GLFW_JOYSTICK_1);
+  const auto player2Actions = readPlayerActions(
+      GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D, GLFW_JOYSTICK_2);
+
+  const auto now = glfwGetTime();
+  const auto secondsElapse =
+      (now - std::exchange(globalLastGameActionTimePointSeconds, now));
+
+  globalGame1->ApplyPlayerActions(player1Actions, secondsElapse);
+  globalGame2->ApplyPlayerActions(player2Actions, secondsElapse);
 
   const auto lshift = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
   const auto rshift = (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
@@ -306,72 +320,6 @@ void Draw() {
     char buf[32];
     snprintf(buf, sizeof(buf), "%04d", 10 * globalGameScore);
     Print(buf);
-  }
-
-  static const auto heatmapPalette = GetHeatmap5Palette();
-  GLFWgamepadstate gamepadState;
-  if (glfwGetGamepadState(GLFW_JOYSTICK_1, &gamepadState)) {
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glOrtho(0.0, globalSceneView.GetScreenWidth(), 0.0,
-            globalSceneView.GetScreenHeight(), -5.0, 5.0);
-    glTranslatef(160, globalSceneView.GetScreenHeight() - 210, 0.0);
-    glColor3f(0.8f, 0.8f, 0.8f);
-    glBegin(GL_LINE_LOOP);
-    const float r = 100;
-    for (int i = 0; i < 32; ++i) {
-      float phi = 2 * 3.1415926535897 * i / 32;
-      float x = r * std::cos(phi);
-      float y = r * std::sin(phi);
-      glVertex2f(x, y);
-    }
-    glEnd();
-    glBegin(GL_LINES);
-    {
-      const auto colour = GetColour(1.0f / 4.0f, heatmapPalette);
-      glColor3f(colour.r, colour.g, colour.b);
-      float x = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_X];
-      float y = gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
-      float l = hypot(x, y);
-      if (l > 0.33) {
-        x /= l;
-        y /= l;
-      }
-      glVertex2f(0.0f, 0.0f);
-      glVertex2f(r * x, -r * y);
-    }
-    {
-      const auto colour = GetColour(2.0f / 4.0f, heatmapPalette);
-      glColor3f(colour.r, colour.g, colour.b);
-      const float x = gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_X];
-      const float y = gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
-      glVertex2f(0.0f, 0.0f);
-      glVertex2f(r * x, -r * y);
-    }
-    int hatsCount = 0;
-    const unsigned char* hats =
-        glfwGetJoystickHats(GLFW_JOYSTICK_1, &hatsCount);
-    if (hatsCount > 0) {
-      const auto colour = GetColour(3.0f / 4.0f, heatmapPalette);
-      glColor3f(colour.r, colour.g, colour.b);
-      float x = 0, y = 0;
-      if (hats[0] & GLFW_HAT_UP) {
-        y += r;
-      }
-      if (hats[0] & GLFW_HAT_DOWN) {
-        y -= r;
-      }
-      if (hats[0] & GLFW_HAT_RIGHT) {
-        x += r;
-      }
-      if (hats[0] & GLFW_HAT_LEFT) {
-        x -= r;
-      }
-      float l = hypot(x, y);
-      glVertex2f(0.0f, 0.0f);
-      glVertex2f(r * x / l, r * y / l);
-    }
-    glEnd();
   }
 }
 

@@ -1,7 +1,6 @@
 #include "game/SceneView.h"
 
 #include <algorithm>
-#include <iostream>
 
 namespace u7::game {
 

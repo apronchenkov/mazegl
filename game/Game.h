@@ -25,7 +25,8 @@ class Game {
     double y = 0.0;
 
     Location() = default;
-    Location(const GameMap::Location& rhs) : x(rhs.x), y(rhs.y) {}
+    /* implicit */ Location(const GameMap::Location& rhs)
+        : x(rhs.x), y(rhs.y) {}
   };
 
   struct PlayerState {
@@ -36,9 +37,9 @@ class Game {
 
   explicit Game(std::shared_ptr<const GameMap> map);
 
-  const GameMap& GetGameMap() const { return *map_; }
+  [[nodiscard]] const GameMap& GetGameMap() const { return *map_; }
 
-  PlayerState GetPlayerState() const { return playerState_; }
+  [[nodiscard]] PlayerState GetPlayerState() const { return playerState_; }
 
   void ApplyPlayerActions(PlayerActions actions, double seconds);
 
