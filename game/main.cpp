@@ -122,7 +122,6 @@ std::shared_ptr<Game> globalGame2;
 double globalLastGameActionTimePointSeconds;
 
 enum Palette { DEFAULT, CUBEHELIX, HEATMAP };
-Palette globalPalette = Palette::DEFAULT;
 GLuint globalSceneDisplayLists;
 
 SceneView globalSceneView;
@@ -136,8 +135,8 @@ void MakeNewMap() {
       (screenWidth - SceneView::kInnerScreenMargin) * screenScale, 3);
   const int height = std::max<int>(
       (screenHeight - SceneView::kInnerScreenMargin) * screenScale, 3);
-  auto gameMap = GenGameMap(
-      width, height, [&] { return rng(); }, kGenMazeOptions);
+  auto gameMap =
+      GenGameMap(width, height, [&] { return rng(); }, kGenMazeOptions);
   {
     static const auto defaultPalette = {
         Colour3f{147 / 255.0f, 147 / 255.0f, 147 / 255.0f}};
@@ -207,7 +206,8 @@ void KeyCallback(GLFWwindow* window, int key, int /*scancode*/, int action,
 
 void KeyH(GLFWwindow* window) {
   const auto readPlayerActions = [&](int keyUp, int keyDown, int keyLeft,
-                                     int keyRight, int gamepadId) {
+                                     int keyRight, int keyAsk1, int keyAsk2,
+                                     int gamepadId) {
     Game::PlayerActions result;
     {  // Keyboard
       if (glfwGetKey(window, keyUp) == GLFW_PRESS) {
@@ -222,56 +222,77 @@ void KeyH(GLFWwindow* window) {
       if (glfwGetKey(window, keyRight) == GLFW_PRESS) {
         result |= Game::kPlayerGoRight;
       }
+      if (glfwGetKey(window, keyAsk1) == GLFW_PRESS) {
+        result |= Game::kPlayerAsk1;
+      }
+      if (glfwGetKey(window, keyAsk2) == GLFW_PRESS) {
+        result |= Game::kPlayerAsk2;
+      }
     }
-    {  // Gamepad hats
-      int hatCount = 0;
-      const unsigned char* hats = glfwGetJoystickHats(gamepadId, &hatCount);
-      for (int i = 0; i < hatCount; ++i) {
-        if (hats[i] & GLFW_HAT_UP) {
+    // Gamepad
+    if (GLFWgamepadstate gamepadState;
+        glfwGetGamepadState(gamepadId, &gamepadState)) {
+      if (gamepadState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] == GLFW_PRESS) {
+        result |= Game::kPlayerGoUp;
+      }
+      if (gamepadState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] == GLFW_PRESS) {
+        result |= Game::kPlayerGoDown;
+      }
+      if (gamepadState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] == GLFW_PRESS) {
+        result |= Game::kPlayerGoLeft;
+      }
+      if (gamepadState.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] == GLFW_PRESS) {
+        result |= Game::kPlayerGoRight;
+      }
+      if (gamepadState.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] == GLFW_PRESS) {
+        result |= Game::kPlayerAsk1;
+      }
+      if (gamepadState.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] ==
+          GLFW_PRESS) {
+        result |= Game::kPlayerAsk2;
+      }
+      auto handleXYAxis = [&](float x, float y) {
+        constexpr float kThreshold = 0.33;
+        if (y < -kThreshold) {
           result |= Game::kPlayerGoUp;
         }
-        if (hats[i] & GLFW_HAT_DOWN) {
+        if (y > kThreshold) {
           result |= Game::kPlayerGoDown;
         }
-        if (hats[i] & GLFW_HAT_LEFT) {
+        if (x < -kThreshold) {
           result |= Game::kPlayerGoLeft;
         }
-        if (hats[i] & GLFW_HAT_RIGHT) {
+        if (x > kThreshold) {
           result |= Game::kPlayerGoRight;
         }
-      }
-      // Gamepad axis
-      if (GLFWgamepadstate gamepadState;
-          glfwGetGamepadState(gamepadId, &gamepadState)) {
-        auto handleAxis = [&](float x, float y) {
-          constexpr float kThreshold = 0.33;
-          if (y < -kThreshold) {
-            result |= Game::kPlayerGoUp;
-          }
-          if (y > kThreshold) {
-            result |= Game::kPlayerGoDown;
-          }
-          if (x < -kThreshold) {
-            result |= Game::kPlayerGoLeft;
-          }
-          if (x > kThreshold) {
-            result |= Game::kPlayerGoRight;
-          }
-        };
-        handleAxis(gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_X],
+      };
+      auto handleTriggerAxis = [&](float l, float r) {
+        constexpr float kThreshold = 0.1;
+        if (l > kThreshold) {
+          result |= Game::kPlayerAsk1;
+        }
+        if (r > kThreshold) {
+          result |= Game::kPlayerAsk2;
+        }
+      };
+      handleXYAxis(gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_X],
                    gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
-        handleAxis(gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_X],
+      handleXYAxis(gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_X],
                    gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
-      }
-      return result;
+      handleTriggerAxis(gamepadState.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER],
+                        gamepadState.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER]);
     }
+    return result;
   };
 
-  const auto player1Actions =
-      readPlayerActions(GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_LEFT,
-                        GLFW_KEY_RIGHT, GLFW_JOYSTICK_1);
-  const auto player2Actions = readPlayerActions(
-      GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D, GLFW_JOYSTICK_2);
+  const auto player1Actions = readPlayerActions(                  //
+      GLFW_KEY_UP, GLFW_KEY_DOWN, GLFW_KEY_LEFT, GLFW_KEY_RIGHT,  //
+      GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT,                  //
+      GLFW_JOYSTICK_1);
+  const auto player2Actions = readPlayerActions(       //
+      GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D,  //
+      GLFW_KEY_LEFT_SHIFT, GLFW_KEY_RIGHT_SHIFT,       //
+      GLFW_JOYSTICK_2);
 
   const auto now = glfwGetTime();
   const auto secondsElapse =
@@ -285,23 +306,21 @@ void KeyH(GLFWwindow* window) {
   const auto player2Loc = game2->GetPlayerState().location;
   globalSceneView.ProcessPointOfInterest(player1Loc.x, player1Loc.y);
   globalSceneView.ProcessPointOfInterest(player2Loc.x, player2Loc.y);
-
-  const auto lshift = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
-  const auto rshift = (glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
-  if (lshift && !rshift) {
-    globalPalette = Palette::CUBEHELIX;
-  } else if (rshift && !lshift) {
-    globalPalette = Palette::HEATMAP;
-  } else {
-    globalPalette = Palette::DEFAULT;
-  }
 }
 
 void Draw() {
-  const auto game1 = globalGame1;
-  const auto game2 = globalGame2;
+  const auto player1State = globalGame1->GetPlayerState();
+  const auto player2State = globalGame2->GetPlayerState();
   const auto bottomLeft = globalSceneView.GetBottomLeft();
   const auto topRight = globalSceneView.GetTopRight();
+  auto palette = Palette::DEFAULT;
+  if ((player1State.ask1 || player2State.ask1) &&
+      !(player1State.ask2 || player2State.ask2)) {
+    palette = Palette::CUBEHELIX;
+  } else if (!(player1State.ask1 || player2State.ask1) &&
+             (player1State.ask2 || player2State.ask2)) {
+    palette = Palette::HEATMAP;
+  }
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glShadeModel(GL_FLAT);
   glMatrixMode(GL_PROJECTION);
@@ -309,9 +328,9 @@ void Draw() {
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   glOrtho(bottomLeft.x, topRight.x, bottomLeft.y, topRight.y, -5.0, 5.0);
-  glCallList(globalSceneDisplayLists + globalPalette);
-  DrawGamePlayer(game1->GetPlayerState(), Colour3f{0.94f, 0.72f, 0.82f}, 3.0f);
-  DrawGamePlayer(game2->GetPlayerState(), Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
+  glCallList(globalSceneDisplayLists + palette);
+  DrawGamePlayer(player1State, Colour3f{0.94f, 0.72f, 0.82f}, 3.0f);
+  DrawGamePlayer(player2State, Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
   {
     const auto sp = GetStandardGlyph(" ");
     glMatrixMode(GL_MODELVIEW);

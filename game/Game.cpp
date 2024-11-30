@@ -63,6 +63,11 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       reachableDistance = 0.0;
     }
   };
+
+  const auto askActions = actions & kPlayerAskMask;
+  playerState_.ask1 = (askActions == kPlayerAsk1);
+  playerState_.ask2 = (askActions == kPlayerAsk2);
+
   while (reachableDistance > kEps) {
     const GameMap::Location loc = {
         static_cast<int>(std::round(playerState_.location.x)),
@@ -71,7 +76,9 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
     const double fx = playerState_.location.x - loc.x;
     const double fy = playerState_.location.y - loc.y;
     Location nextLoc = playerState_.location;
-    if (actions == kPlayerGoUp) {
+
+    const auto goActions = actions & kPlayerGoMask;
+    if (goActions == kPlayerGoUp) {
       if (std::fabs(fx) < kEps) {
         if (fy <= -kEps) {
           nextLoc = loc;
@@ -81,7 +88,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (map_->IsHall(loc.Up())) {
         nextLoc = loc;
       }
-    } else if (actions == kPlayerGoDown) {
+    } else if (goActions == kPlayerGoDown) {
       if (std::fabs(fx) < kEps) {
         if (fy >= kEps) {
           nextLoc = loc;
@@ -91,7 +98,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (map_->IsHall(loc.Down())) {
         nextLoc = loc;
       }
-    } else if (actions == kPlayerGoLeft) {
+    } else if (goActions == kPlayerGoLeft) {
       if (std::fabs(fy) < kEps) {
         if (fx >= kEps) {
           nextLoc = loc;
@@ -101,7 +108,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (map_->IsHall(loc.Left())) {
         nextLoc = loc;
       }
-    } else if (actions == kPlayerGoRight) {
+    } else if (goActions == kPlayerGoRight) {
       if (std::fabs(fy) < kEps) {
         if (fx <= -kEps) {
           nextLoc = loc;
@@ -111,7 +118,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (map_->IsHall(loc.Right())) {
         nextLoc = loc;
       }
-    } else if (actions == (kPlayerGoUp | kPlayerGoRight)) {
+    } else if (goActions == (kPlayerGoUp | kPlayerGoRight)) {
       if (fx <= -kEps || fy <= -kEps) {
         nextLoc = loc;
       } else if (fy >= kEps) {
@@ -123,7 +130,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (!map_->IsHall(loc.Up()) && map_->IsHall(loc.Right())) {
         nextLoc = loc.Right();
       }
-    } else if (actions == (kPlayerGoUp | kPlayerGoLeft)) {
+    } else if (goActions == (kPlayerGoUp | kPlayerGoLeft)) {
       if (fx >= kEps || fy <= -kEps) {
         nextLoc = loc;
       } else if (fy >= kEps) {
@@ -135,7 +142,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (!map_->IsHall(loc.Up()) && map_->IsHall(loc.Left())) {
         nextLoc = loc.Left();
       }
-    } else if (actions == (kPlayerGoDown | kPlayerGoRight)) {
+    } else if (goActions == (kPlayerGoDown | kPlayerGoRight)) {
       if (fx <= -kEps || fy >= kEps) {
         nextLoc = loc;
       } else if (fy <= -kEps) {
@@ -147,7 +154,7 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
       } else if (!map_->IsHall(loc.Down()) && map_->IsHall(loc.Right())) {
         nextLoc = loc.Right();
       }
-    } else if (actions == (kPlayerGoDown | kPlayerGoLeft)) {
+    } else if (goActions == (kPlayerGoDown | kPlayerGoLeft)) {
       if (fx >= kEps || fy >= kEps) {
         nextLoc = loc;
       } else if (fy <= -kEps) {

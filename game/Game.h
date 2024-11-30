@@ -13,12 +13,17 @@ namespace u7::game {
 
 class Game {
  public:
-  using PlayerActions = std::bitset<4>;
+  using PlayerActions = std::bitset<6>;
 
-  static constexpr PlayerActions kPlayerGoUp{0b0001};
-  static constexpr PlayerActions kPlayerGoDown{0b0010};
-  static constexpr PlayerActions kPlayerGoLeft{0b0100};
-  static constexpr PlayerActions kPlayerGoRight{0b1000};
+  static constexpr PlayerActions kPlayerGoUp{0b000001};
+  static constexpr PlayerActions kPlayerGoDown{0b000010};
+  static constexpr PlayerActions kPlayerGoLeft{0b000100};
+  static constexpr PlayerActions kPlayerGoRight{0b001000};
+  static constexpr PlayerActions kPlayerGoMask{0b001111};
+
+  static constexpr PlayerActions kPlayerAsk1{0b010000};
+  static constexpr PlayerActions kPlayerAsk2{0b100000};
+  static constexpr PlayerActions kPlayerAskMask{0b110000};
 
   struct Location {
     double x = 0.0;
@@ -33,6 +38,8 @@ class Game {
     Location location = {};
     bool touchedExit = false;
     double speed = 0.0;
+    bool ask1 = false;
+    bool ask2 = false;
   };
 
   explicit Game(std::shared_ptr<const GameMap> map);
