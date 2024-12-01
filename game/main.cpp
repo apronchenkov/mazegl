@@ -8,6 +8,7 @@
 
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
+#include <cmath>
 #include <cstdio>
 #include <iostream>
 #include <random>
@@ -27,11 +28,11 @@ using ::u7::palettes::GetCubehelixPalette;
 using ::u7::palettes::GetHeatmap5Palette;
 
 constexpr GenMazeOptions kGenMazeOptions{
-    // .noLoops = false,
-    // .noSmallSquares = false,
-    // .limitDensityR = 3,
-    // .limitDensityThreshold = 7,
-    // .pruneStubs = false,
+    .noLoops = false,
+    .noSmallSquares = false,
+    .limitDensityR = 5,
+    .limitDensityThreshold = 20,
+    .pruneStubs = true,
 };
 
 constexpr int kScoreFontSize = 8;
@@ -81,23 +82,61 @@ void DrawGameMap(const GameMap& map, std::span<const Colour3f> palette,
   }
 }
 
-void DrawGamePlayer(const Game::PlayerState& playerState, Colour3f colour,
-                    float z) {
-  const auto& loc = playerState.location;
+void DrawSquare() {
+  glVertex2i(-1, -1);
+  glVertex2i(+1, -1);
+  glVertex2i(+1, +1);
+  glVertex2i(-1, +1);
+}
+
+template <int N, int Dir>
+void DrawCircle() {
+  constexpr float kPi = 3.1415926535897f;
+  const auto alpha = -2 * kPi / N;
+  float area = 0.0;
+  {
+    float x0 = cosf(alpha * (N - 1));
+    float y0 = sinf(alpha * (N - 1));
+    for (int i = 0; i < N; ++i) {
+      float x1 = cosf(alpha * i);
+      float y1 = sinf(alpha * i);
+      area += (x1 * y0 - y1 * x0) / 2;
+      x0 = x1;
+      y0 = y1;
+    }
+  }
+  const float alpha0 = fmodf(glfwGetTime(), 2 * kPi);
+  const auto radius = sqrtf(4 / area);
+  for (int i = 0; i < N; ++i) {
+    glVertex2f(radius * cosf(Dir * alpha0 + alpha * i),
+               radius * sinf(Dir * alpha0 + alpha * i));
+  }
+}
+
+void DrawGamePlayer(auto drawPointsFn, const Game::PlayerState& playerState,
+                    Colour3f colour, float z) {
   glColor3f(colour.r, colour.g, colour.b);
-  glBegin(GL_QUADS);
-  glVertex3f(loc.x - 0.5f, loc.y - 0.5f, z);
-  glVertex3f(loc.x + 0.5f, loc.y - 0.5f, z);
-  glVertex3f(loc.x + 0.5f, loc.y + 0.5f, z);
-  glVertex3f(loc.x - 0.5f, loc.y + 0.5f, z);
-  glEnd();
-  if (playerState.touchedExit) {
-    glBegin(GL_LINE_LOOP);
-    glVertex3f(loc.x - 0.7f, loc.y - 0.7f, z);
-    glVertex3f(loc.x + 0.7f, loc.y - 0.7f, z);
-    glVertex3f(loc.x + 0.7f, loc.y + 0.7f, z);
-    glVertex3f(loc.x - 0.7f, loc.y + 0.7f, z);
-    glEnd();
+  const auto& loc = playerState.location;
+  glPushMatrix();
+  {
+    glTranslatef(loc.x, loc.y, z);
+    {
+      glPushMatrix();
+      glScalef(0.5f, 0.5f, 1.0f);
+      glBegin(GL_TRIANGLE_FAN);
+      drawPointsFn();
+      glEnd();
+      glPopMatrix();
+    }
+    if (playerState.touchedExit) {
+      glPushMatrix();
+      glScalef(0.7f, 0.7f, 1.0f);
+      glBegin(GL_LINE_LOOP);
+      drawPointsFn();
+      glEnd();
+      glPopMatrix();
+    }
+    glPopMatrix();
   }
 }
 
@@ -313,12 +352,12 @@ void Draw() {
   const auto player2State = globalGame2->GetPlayerState();
   const auto bottomLeft = globalSceneView.GetBottomLeft();
   const auto topRight = globalSceneView.GetTopRight();
+  const auto ask1 = (player1State.ask1 || player2State.ask1);
+  const auto ask2 = (player1State.ask2 || player2State.ask2);
   auto palette = Palette::DEFAULT;
-  if ((player1State.ask1 || player2State.ask1) &&
-      !(player1State.ask2 || player2State.ask2)) {
+  if (ask1 && !ask2) {
     palette = Palette::CUBEHELIX;
-  } else if (!(player1State.ask1 || player2State.ask1) &&
-             (player1State.ask2 || player2State.ask2)) {
+  } else if (!ask1 && ask2) {
     palette = Palette::HEATMAP;
   }
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -329,8 +368,10 @@ void Draw() {
   glLoadIdentity();
   glOrtho(bottomLeft.x, topRight.x, bottomLeft.y, topRight.y, -5.0, 5.0);
   glCallList(globalSceneDisplayLists + palette);
-  DrawGamePlayer(player1State, Colour3f{0.94f, 0.72f, 0.82f}, 3.0f);
-  DrawGamePlayer(player2State, Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
+  DrawGamePlayer(&DrawCircle<5, 1>, player1State, Colour3f{0.94f, 0.72f, 0.82f},
+                 3.0f);
+  DrawGamePlayer(&DrawCircle<5, -1>, player2State,
+                 Colour3f{0.91f, 0.34f, 0.57f}, 2.0f);
   {
     const auto sp = GetStandardGlyph(" ");
     glMatrixMode(GL_MODELVIEW);

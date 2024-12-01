@@ -64,9 +64,8 @@ void Game::ApplyPlayerActions(PlayerActions actions, double seconds) {
     }
   };
 
-  const auto askActions = actions & kPlayerAskMask;
-  playerState_.ask1 = (askActions == kPlayerAsk1);
-  playerState_.ask2 = (askActions == kPlayerAsk2);
+  playerState_.ask1 = (actions & kPlayerAsk1).any();
+  playerState_.ask2 = (actions & kPlayerAsk2).any();
 
   while (reachableDistance > kEps) {
     const GameMap::Location loc = {
