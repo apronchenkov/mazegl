@@ -2,25 +2,32 @@
 // Created by Alexander G. Pronchenkov on 27.01.2023.
 //
 #include "game/Game.h"
+#include "game/GameMapProviders.h"
 #include "game/Glyph.h"
 #include "game/SceneView.h"
+#include "lua_bridge/Utils.h"
 #include "palettes/Palettes.h"
 
-#define GL_SILENCE_DEPRECATION
-#include <GLFW/glfw3.h>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <iostream>
 #include <random>
 #include <span>
+#include <string_view>
+
+#define GL_SILENCE_DEPRECATION
+#include <GLFW/glfw3.h>
 
 using ::u7::game::Game;
 using ::u7::game::GameMap;
-using ::u7::game::GenGameMap;
+using ::u7::game::GameMapProviderPtr;
 using ::u7::game::GetStandardGlyph;
 using ::u7::game::Glyph;
+using ::u7::game::MakeMazeMapProvider;
 using ::u7::game::SceneCoord;
 using ::u7::game::SceneView;
+using ::u7::lua_bridge::MakeLuaState;
 using ::u7::maze::GenMazeOptions;
 using ::u7::palettes::Colour3f;
 using ::u7::palettes::GetColour;
@@ -155,6 +162,8 @@ void Print(std::string_view message) {
   }
 }
 
+GameMapProviderPtr globalGameMapProvider;
+
 int globalGameScore;
 std::shared_ptr<Game> globalGame1;
 std::shared_ptr<Game> globalGame2;
@@ -166,7 +175,6 @@ GLuint globalSceneDisplayLists;
 SceneView globalSceneView;
 
 void MakeNewMap() {
-  static std::mt19937 rng;
   const auto screenScale = globalSceneView.GetScreenScale();
   const auto screenWidth = globalSceneView.GetScreenWidth();
   const auto screenHeight = globalSceneView.GetScreenHeight();
@@ -174,8 +182,7 @@ void MakeNewMap() {
       (screenWidth - SceneView::kInnerScreenMargin) * screenScale, 3);
   const int height = std::max<int>(
       (screenHeight - SceneView::kInnerScreenMargin) * screenScale, 3);
-  auto gameMap =
-      GenGameMap(width, height, [&] { return rng(); }, kGenMazeOptions);
+  auto gameMap = globalGameMapProvider->Gen(width, height);
   {
     static const auto defaultPalette = {
         Colour3f{147 / 255.0f, 147 / 255.0f, 147 / 255.0f}};
@@ -446,7 +453,53 @@ int SubMain() {
   return 0;
 }
 
-int main() {
+int main(int argc, char** argv) {
+  // auto L = MakeLuaState();
+  // luaL_openlibs(L.get());
+  // if (0 != luaL_loadstring(L.get(), "dofile('/tmp/1.lua')")) {
+  //   std::cerr << "luaL_loadstring failed: " << lua_tostring(L.get(), -1)
+  //             << '\n';
+  //   return -1;
+  // }
+  // if (0 != lua_pcallk(L.get(), /*nargs=*/0, /*nresults=*/0, /*msgh=*/0,
+  //                     /*ctx=*/0, nullptr)) {
+  //   std::cerr << "lua_pcall failed: " << lua_tostring(L.get(), -1) << '\n';
+  //   return -1;
+  // }
+
+  std::string_view seed;
+  std::string_view mazeLua;
+  for (int i = 1; i < argc; ++i) {
+    const std::string_view name(argv[i]);
+    if (name == "--help" || name == "-h") {
+      std::cerr << "Usage: " << argv[0]
+                << " [--help|-h] [--seed=<seed>] [--maze-lua=<file>.lua]\n";
+      return -1;
+    } else if (name.starts_with("--seed=")) {
+      seed = name;
+    } else if (name.starts_with("--maze-lua=")) {
+      mazeLua = name.substr(11);
+    } else {
+      std::cerr << "unknown parameter: " << name << '\n';
+      return -1;
+    }
+  }
+
+  if (mazeLua.empty()) {
+    if (seed.empty()) {
+      std::seed_seq seedSeq({std::chrono::high_resolution_clock::now()
+                                 .time_since_epoch()
+                                 .count()});
+      globalGameMapProvider = MakeMazeMapProvider(kGenMazeOptions, &seedSeq);
+    } else {
+      std::seed_seq seedSeq(seed.begin(), seed.end());
+      globalGameMapProvider = MakeMazeMapProvider(kGenMazeOptions, &seedSeq);
+    }
+  } else {
+    std::cerr << "--maze-lua: not-implemented yet\n";
+    return -1;
+  }
+
   if (!glfwInit()) {
     std::cerr << "Failed to initialize GLFW\n";
     return -1;

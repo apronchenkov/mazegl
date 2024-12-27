@@ -42,7 +42,7 @@ class Game {
     bool ask2 = false;
   };
 
-  explicit Game(std::shared_ptr<const GameMap> map);
+  explicit Game(GameMapPtr map);
 
   [[nodiscard]] const GameMap& GetGameMap() const { return *map_; }
 
@@ -51,7 +51,7 @@ class Game {
   void ApplyPlayerActions(PlayerActions actions, double seconds);
 
  private:
-  std::shared_ptr<const GameMap> map_;
+  GameMapPtr map_;
   PlayerState playerState_;
 };
 

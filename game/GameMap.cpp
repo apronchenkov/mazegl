@@ -49,31 +49,4 @@ void GameMap::InitDistanceToExit() {
   maxDistanceToExit_ = distance - 1;
 }
 
-std::shared_ptr<GameMap> GenGameMap(int width, int height, maze::Rng rng,
-                                    maze::GenMazeOptions options) {
-  auto maze = GenMaze(height, width, std::move(rng), options);
-  GameMap::Location entrance;
-  GameMap::Location exit;
-  int entranceD = width + height;
-  int exitD = 0;
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      if (maze.UnsafeAt(y, x)) {
-        const int d = x + y;
-        if (entranceD > d) {
-          entrance.x = x;
-          entrance.y = y;
-          entranceD = d;
-        }
-        if (exitD < d) {
-          exit.x = x;
-          exit.y = y;
-          exitD = d;
-        }
-      }
-    }
-  }
-  return std::make_shared<GameMap>(std::move(maze), entrance, exit);
-}
-
 }  // namespace u7::game

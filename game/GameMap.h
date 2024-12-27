@@ -69,8 +69,7 @@ class GameMap {
   size_t maxDistanceToExit_ = 0;
 };
 
-std::shared_ptr<GameMap> GenGameMap(int width, int height, maze::Rng rng,
-                                    maze::GenMazeOptions options = {});
+using GameMapPtr = std::shared_ptr<const GameMap>;
 
 }  // namespace u7::game
 
