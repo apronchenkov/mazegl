@@ -9,6 +9,7 @@ namespace u7::game {
 namespace {
 
 constexpr double kEps = 1.0 / 1024.0;
+constexpr double kSigma = 1.0 / 4.0;
 constexpr double kBaseSpeed = 2.0;
 constexpr double kAcceleration = 15.0;
 
@@ -29,8 +30,8 @@ Game::PlayerState NormalizePlayerState(Game::PlayerState playerState,
       (playerState.location.x < mapLoc.x && !map.IsHall(mapLoc.Left()))) {
     playerState.location.x = mapLoc.x;
   }
-  if (std::fabs(playerState.location.x - mapLoc.x) < kEps &&
-      std::fabs(playerState.location.y - mapLoc.y) < kEps &&
+  if (std::fabs(playerState.location.x - mapLoc.x) < kSigma &&
+      std::fabs(playerState.location.y - mapLoc.y) < kSigma &&
       map.GetExitLocation() == mapLoc) {
     playerState.touchedExit = true;
   }
