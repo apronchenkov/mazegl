@@ -12,7 +12,6 @@
 #include <cmath>
 #include <cstdio>
 #include <iostream>
-#include <random>
 #include <span>
 #include <string_view>
 
@@ -24,6 +23,7 @@ using ::u7::game::GameMap;
 using ::u7::game::GameMapProviderPtr;
 using ::u7::game::GetStandardGlyph;
 using ::u7::game::Glyph;
+using ::u7::game::MakeLuaMapProvider;
 using ::u7::game::MakeMazeMapProvider;
 using ::u7::game::SceneCoord;
 using ::u7::game::SceneView;
@@ -468,7 +468,7 @@ int main(int argc, char** argv) {
   // }
 
   std::string_view seed;
-  std::string_view mazeLua;
+  std::string_view luaFile;
   for (int i = 1; i < argc; ++i) {
     const std::string_view name(argv[i]);
     if (name == "--help" || name == "-h") {
@@ -478,14 +478,14 @@ int main(int argc, char** argv) {
     } else if (name.starts_with("--seed=")) {
       seed = name;
     } else if (name.starts_with("--maze-lua=")) {
-      mazeLua = name.substr(11);
+      luaFile = name.substr(11);
     } else {
       std::cerr << "unknown parameter: " << name << '\n';
       return -1;
     }
   }
 
-  if (mazeLua.empty()) {
+  if (luaFile.empty()) {
     if (seed.empty()) {
       std::seed_seq seedSeq({std::chrono::high_resolution_clock::now()
                                  .time_since_epoch()
@@ -496,8 +496,7 @@ int main(int argc, char** argv) {
       globalGameMapProvider = MakeMazeMapProvider(kGenMazeOptions, &seedSeq);
     }
   } else {
-    std::cerr << "--maze-lua: not-implemented yet\n";
-    return -1;
+    globalGameMapProvider = MakeLuaMapProvider(luaFile);
   }
 
   if (!glfwInit()) {

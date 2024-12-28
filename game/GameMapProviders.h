@@ -28,6 +28,8 @@ using GameMapProviderPtr = std::shared_ptr<GameMapProvider>;
 GameMapProviderPtr MakeMazeMapProvider(maze::GenMazeOptions options,
                                        std::seed_seq* seedSeq);
 
+GameMapProviderPtr MakeLuaMapProvider(std::string_view luaFile);
+
 }  // namespace u7::game
 
 #endif  // U7_GAME_GAMEMAP_PROVIDERS_H_
